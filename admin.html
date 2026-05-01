@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#111111" />
+<title>Fix This · City Portal</title>
+<link rel="icon" type="image/svg+xml" href="assets/crest.svg" />
+<style>
+  :root{
+    --ink:#111;--paper:#fafaf9;--paper-2:#f1f1ef;--line:#d6d3d1;--muted:#6b7280;
+    --red:#b91c1c;--ok:#15803d;--warn:#b45309;
+    --safe-t: env(safe-area-inset-top, 0px);
+    --safe-b: env(safe-area-inset-bottom, 0px);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--paper);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.45}
+  body{min-height:100dvh;display:flex;flex-direction:column;padding:calc(var(--safe-t) + 16px) 16px calc(var(--safe-b) + 16px)}
+  button,input,select,textarea{font:inherit;color:inherit}
+  button{cursor:pointer;border:0;background:transparent}
+
+  /* --- Top bar --- */
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:4px 4px;border-bottom:1px solid var(--line);padding-bottom:12px}
+  .crest{display:flex;align-items:center;gap:10px;font-weight:700}
+  .crest svg{width:28px;height:28px}
+  .crest small{display:block;font-weight:500;color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+  .who{font-size:13px;color:var(--muted);text-align:right}
+  .who strong{display:block;color:var(--ink);font-size:14px}
+
+  /* --- Login --- */
+  .login{flex:1;display:flex;align-items:center;justify-content:center;padding:20px}
+  .login .card{
+    background:#fff;border:1px solid var(--line);border-radius:18px;padding:28px;
+    width:min(420px,94vw);box-shadow:0 4px 12px rgba(0,0,0,.04);
+  }
+  .login h1{margin:0 0 8px;font-size:26px;font-weight:800}
+  .login p{margin:0 0 18px;color:var(--muted)}
+  .login label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:6px;letter-spacing:.04em;text-transform:uppercase}
+  .login input{width:100%;padding:14px;border:2px solid var(--line);border-radius:12px;background:#fff;outline:none;font-size:16px;margin-bottom:14px}
+  .login input:focus{border-color:var(--ink)}
+  .login button.primary{background:var(--ink);color:#fff;font-weight:700;padding:14px;border-radius:12px;width:100%;font-size:16px}
+  .login .err{background:#fee2e2;color:#991b1b;padding:12px;border-radius:10px;font-size:13px;margin-bottom:12px}
+  .login .help{font-size:12px;color:var(--muted);margin-top:14px;border-top:1px solid var(--line);padding-top:14px}
+  .login .hints{margin-top:8px;font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--muted);background:var(--paper-2);padding:10px;border-radius:8px;line-height:1.5}
+
+  /* --- Main --- */
+  main{flex:1;padding:18px 0}
+  .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:18px}
+  .toolbar select, .toolbar input{padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:#fff;font-size:14px}
+  .toolbar .search{flex:1;min-width:200px}
+  .stats{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
+  .stat{background:#fff;border:1px solid var(--line);padding:8px 12px;border-radius:10px;font-size:12px;color:var(--muted)}
+  .stat strong{color:var(--ink);font-size:18px;display:block;font-weight:800}
+
+  /* --- Cards --- */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+  .card .img{aspect-ratio:4/3;background:var(--paper-2);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px}
+  .card .img img{width:100%;height:100%;object-fit:cover;cursor:zoom-in}
+  .card .body{padding:14px;display:flex;flex-direction:column;gap:8px;flex:1}
+  .card .tags{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  .tag{background:var(--paper-2);color:var(--ink);font-size:11px;font-weight:700;padding:4px 8px;border-radius:99px;letter-spacing:.04em;text-transform:uppercase}
+  .tag.urgent{background:#fee2e2;color:var(--red)}
+  .tag.open{background:#fef3c7;color:#92400e}
+  .tag.progress{background:#dbeafe;color:#1e40af}
+  .tag.resolved{background:#dcfce7;color:#166534}
+  .card p.desc{margin:0;font-size:14px}
+  .card .meta{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+  .card .meta a{color:var(--muted);text-decoration:underline}
+  .card .actions{display:flex;gap:8px;border-top:1px solid var(--line);padding:10px 14px;background:var(--paper-2)}
+  .card .actions select{flex:1;padding:8px;border:1px solid var(--line);border-radius:8px;background:#fff;font-size:13px}
+  .card .actions button{padding:8px 12px;border-radius:8px;background:var(--ink);color:#fff;font-size:12px;font-weight:600}
+
+  /* --- Modal --- */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px}
+  .modal img{max-width:96vw;max-height:90vh;border-radius:8px}
+  .modal .close{position:absolute;top:20px;right:20px;background:#fff;color:var(--ink);padding:10px 14px;border-radius:8px;font-weight:700}
+
+  /* --- Empty --- */
+  .empty{text-align:center;padding:80px 20px;color:var(--muted)}
+  .empty h3{margin:0 0 8px;color:var(--ink);font-size:20px}
+
+  footer{margin-top:auto;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+  footer a{color:var(--muted)}
+
+  @media (max-width:520px){
+    .stats{margin-left:0;width:100%}
+    .toolbar .search{order:-1;width:100%}
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="crest">
+    <svg viewBox="0 0 64 64" aria-hidden="true">
+      <path d="M32 4 L56 14 L56 32 C56 46 45 56 32 60 C19 56 8 46 8 32 L8 14 Z" fill="#111" stroke="#000" stroke-width="2"/>
+      <path d="M32 14 L46 19 L46 32 C46 41 39 48 32 50 C25 48 18 41 18 32 L18 19 Z" fill="#fff"/>
+      <path d="M22 28 H42 M22 34 H42 M22 40 H38" stroke="#111" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>
+    <div>Fix This <small>City Portal</small></div>
+  </div>
+  <div class="who" id="who"></div>
+</header>
+
+<div id="root"></div>
+
+<footer>
+  <span>© 2026 Fix This · Authorized personnel only</span>
+  <span><a href="index.html">← back to citizen app</a></span>
+</footer>
+
+<script src="assets/routing.js"></script>
+<script src="assets/storage.js"></script>
+<script src="assets/admin.js"></script>
+</body>
+</html>

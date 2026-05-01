@@ -1,0 +1,11 @@
+{
+  "name": "fixthis",
+  "version": "0.2.0",
+  "description": "Fix This — civic reporting that actually routes.",
+  "private": true,
+  "scripts": {
+    "dev": "npx --yes serve -l 5173 .",
+    "start": "npx --yes serve -l 5173 ."
+  },
+  "license": "MIT"
+}

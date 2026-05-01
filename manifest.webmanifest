@@ -1,0 +1,13 @@
+{
+  "name": "Fix This",
+  "short_name": "Fix This",
+  "description": "Report a problem in your city in 30 seconds.",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fafaf9",
+  "theme_color": "#b91c1c",
+  "icons": [
+    { "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
