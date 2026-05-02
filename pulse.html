@@ -44,10 +44,10 @@
   .num-card.resolved .big{color:var(--ok)}
   .num-card .pulse-dot{position:absolute;top:14px;right:14px;width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 0 0 rgba(185,28,28,.6);animation:pulse 2s infinite}
   @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(185,28,28,.6)}70%{box-shadow:0 0 0 14px rgba(185,28,28,0)}100%{box-shadow:0 0 0 0 rgba(185,28,28,0)}}
-  .map-strip{max-width:1200px;margin:0 auto 56px;padding:0 22px}
+  .map-strip{max-width:1200px;margin:0 auto 56px;padding:0 22px;width:100%}
   .map-strip h2{font-size:14px;font-weight:700;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin:0 0 12px}
   .map-strip h2 .live{color:var(--red);margin-left:8px;font-weight:800}
-  #pulseMap{height:380px;border-radius:18px;border:1px solid var(--line);background:#dde2d8;overflow:hidden}
+  #pulseMap{width:100%;height:380px;border-radius:18px;border:1px solid var(--line);background:#dde2d8;overflow:hidden;display:block}
   .section{max-width:1200px;margin:0 auto 56px;padding:0 22px}
   .section h2{font-size:24px;font-weight:800;margin:0 0 6px;letter-spacing:-.01em}
   .section .sub{color:var(--muted);font-size:14px;margin:0 0 20px}
@@ -172,6 +172,9 @@
       map = L.map("pulseMap", { zoomControl: true, attributionControl: true, scrollWheelZoom: false }).setView(ITHACA, 14);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
       map.on('click', () => map.scrollWheelZoom.enable());
+      setTimeout(() => map.invalidateSize(), 100);
+      setTimeout(() => map.invalidateSize(), 500);
+      window.addEventListener('resize', () => map.invalidateSize());
     }
     markers.forEach(m => map.removeLayer(m)); markers = [];
     const withGeo = reports.filter(r => r.geo && r.geo.lat && r.geo.lon);
