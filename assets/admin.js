@@ -208,6 +208,7 @@
     }
 
     renderMain();
+    if (window.STORAGE.onChange) { window.STORAGE.onChange(function () { try { renderMain(); } catch (e) {} }); }
   }
 
   function boot() {
