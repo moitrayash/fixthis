@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#b91c1c" />
+<title>The Pulse — Fix This</title>
+<meta name="description" content="Live pulse of what's broken and what's getting fixed in Ithaca and on Cornell's campus." />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="The Pulse — what Ithaca and Cornell are fixing right now" />
+<meta property="og:description" content="Live count of broken things, being-fixed things, and resolved things." />
+<meta property="og:url" content="https://fixthis.yashmoitra.com/pulse.html" />
+<meta property="og:image" content="https://fixthis.yashmoitra.com/assets/icon.svg" />
+<meta name="twitter:card" content="summary_large_image" />
+<link rel="icon" type="image/svg+xml" href="assets/crest.svg" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<style>
+  :root{--ink:#111;--paper:#fafaf9;--paper-2:#f1f1ef;--line:#e5e3e0;--muted:#6b7280;--red:#b91c1c;--red-soft:#fef2f2;--ok:#15803d;--amber:#f59e0b;--safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px)}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--paper);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.5}
+  body{min-height:100dvh;display:flex;flex-direction:column}
+  a{color:inherit}
+  button{cursor:pointer;border:0;background:transparent;font:inherit;color:inherit}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:calc(var(--safe-t) + 14px) 22px 14px;border-bottom:1px solid var(--line)}
+  .crest{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.01em}
+  .crest svg{width:30px;height:30px}
+  .crest small{display:block;font-weight:500;color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+  .nav-right{display:flex;gap:18px;align-items:center;font-size:14px}
+  .nav-right a{text-decoration:none;color:var(--muted);font-weight:600}
+  .nav-right .cta{background:var(--red);color:#fff;padding:8px 16px;border-radius:99px;text-decoration:none;font-weight:700;font-size:13px;letter-spacing:.02em;box-shadow:0 2px 0 #7f1d1d}
+  .hero{padding:64px 22px 32px;text-align:center;max-width:920px;margin:0 auto}
+  .hero .eyebrow{display:inline-block;font-size:11px;font-weight:700;color:var(--red);background:var(--red-soft);padding:6px 12px;border-radius:99px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:18px}
+  .hero h1{font-size:clamp(40px,8vw,72px);margin:0 0 18px;line-height:1;font-weight:800;letter-spacing:-.025em}
+  .hero h1 .accent{color:var(--red)}
+  .hero p.lede{font-size:clamp(17px,2.6vw,22px);color:#374151;max-width:680px;margin:0 auto;line-height:1.4}
+  .numbers{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:920px;margin:38px auto 56px;padding:0 22px}
+  .num-card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px;text-align:center;position:relative;overflow:hidden;transition:transform .25s}
+  .num-card:hover{transform:translateY(-2px)}
+  .num-card .label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+  .num-card .big{font-size:clamp(40px,7vw,64px);font-weight:800;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .num-card .sub{font-size:12px;color:var(--muted);margin-top:6px}
+  .num-card.open .big{color:var(--red)}
+  .num-card.progress .big{color:var(--amber)}
+  .num-card.resolved .big{color:var(--ok)}
+  .num-card .pulse-dot{position:absolute;top:14px;right:14px;width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 0 0 rgba(185,28,28,.6);animation:pulse 2s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(185,28,28,.6)}70%{box-shadow:0 0 0 14px rgba(185,28,28,0)}100%{box-shadow:0 0 0 0 rgba(185,28,28,0)}}
+  .map-strip{max-width:1200px;margin:0 auto 56px;padding:0 22px}
+  .map-strip h2{font-size:14px;font-weight:700;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin:0 0 12px}
+  .map-strip h2 .live{color:var(--red);margin-left:8px;font-weight:800}
+  #pulseMap{height:380px;border-radius:18px;border:1px solid var(--line);background:#dde2d8;overflow:hidden}
+  .section{max-width:1200px;margin:0 auto 56px;padding:0 22px}
+  .section h2{font-size:24px;font-weight:800;margin:0 0 6px;letter-spacing:-.01em}
+  .section .sub{color:var(--muted);font-size:14px;margin:0 0 20px}
+  .wall{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+  .fix{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;transition:transform .15s,box-shadow .15s}
+  .fix:hover{transform:translateY(-3px);box-shadow:0 14px 30px rgba(0,0,0,.07)}
+  .fix .img{aspect-ratio:4/3;background:var(--paper-2);position:relative}
+  .fix .img img{width:100%;height:100%;object-fit:cover}
+  .fix .img.empty{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px;background:repeating-linear-gradient(45deg,#f4f3ee 0 6px,#ecebe5 6px 12px)}
+  .fix .img .stamp{position:absolute;top:10px;right:10px;background:var(--ok);color:#fff;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:4px 8px;border-radius:99px;transform:rotate(2deg);box-shadow:0 2px 6px rgba(0,0,0,.15)}
+  .fix .img .stamp.progress{background:var(--amber);color:#1f2937}
+  .fix .img .stamp.open{background:var(--red)}
+  .fix .body{padding:14px;flex:1;display:flex;flex-direction:column;gap:6px}
+  .fix .dept{font-size:10px;font-weight:800;color:var(--ink);letter-spacing:.06em;text-transform:uppercase}
+  .fix .desc{font-size:14px;font-weight:600;line-height:1.3;margin:0}
+  .fix .meta{font-size:11px;color:var(--muted);margin-top:auto;padding-top:8px;display:flex;justify-content:space-between;font-family:ui-monospace,Menlo,monospace}
+  .breakdown{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px}
+  .bar-row{display:grid;grid-template-columns:160px 1fr 60px;gap:12px;align-items:center;padding:8px 0;border-bottom:1px dashed var(--line)}
+  .bar-row:last-child{border-bottom:0}
+  .bar-row .name{font-size:13px;font-weight:600}
+  .bar-row .name .ic{margin-right:6px}
+  .bar-row .bar{height:8px;background:var(--paper-2);border-radius:99px;overflow:hidden}
+  .bar-row .bar .fill{height:100%;background:var(--red);border-radius:99px;transition:width .8s ease-out}
+  .bar-row .count{font-size:12px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+  .manifesto{background:linear-gradient(180deg,var(--ink) 0,#1f1f1f 100%);color:#fafaf9;padding:80px 22px;text-align:center;margin-top:40px}
+  .manifesto-inner{max-width:760px;margin:0 auto}
+  .manifesto h2{font-size:clamp(28px,5vw,48px);font-weight:800;line-height:1.1;letter-spacing:-.015em;margin:0 0 22px}
+  .manifesto p{font-size:clamp(16px,2.2vw,20px);line-height:1.6;color:#d1d5db;margin:0 0 14px}
+  .manifesto p em{color:#fff;font-style:normal;font-weight:600}
+  .manifesto .cta-row{margin-top:36px}
+  .manifesto .big-red{background:var(--red);color:#fff;font-weight:800;font-size:22px;padding:24px 40px;border-radius:18px;display:inline-block;text-decoration:none;letter-spacing:.04em;text-transform:uppercase;box-shadow:0 6px 0 #7f1d1d, 0 14px 30px rgba(185,28,28,.4)}
+  .manifesto .big-red:active{transform:translateY(4px);box-shadow:0 2px 0 #7f1d1d, 0 6px 14px rgba(185,28,28,.3)}
+  footer{padding:30px 22px calc(var(--safe-b) + 30px);text-align:center;font-size:12px;color:var(--muted)}
+  footer a{color:var(--muted)}
+  .marker-pin{width:22px;height:22px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+  .marker-pin.open{background:#dc2626}
+  .marker-pin.progress{background:#f59e0b}
+  .marker-pin.resolved{background:#16a34a}
+  .leaflet-popup-content{font-family:inherit;font-size:13px;margin:10px 12px}
+  .empty-state{padding:40px 20px;text-align:center;color:var(--muted);background:var(--paper-2);border-radius:14px;border:2px dashed var(--line)}
+  .empty-state strong{display:block;color:var(--ink);margin-bottom:6px;font-size:16px}
+  @media (max-width:640px){.numbers{grid-template-columns:1fr;gap:12px}.bar-row{grid-template-columns:120px 1fr 50px}#pulseMap{height:300px}}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a href="index.html" class="crest" style="text-decoration:none;color:inherit">
+    <svg viewBox="0 0 64 64" aria-hidden="true">
+      <path d="M32 4 L56 14 L56 32 C56 46 45 56 32 60 C19 56 8 46 8 32 L8 14 Z" fill="#b91c1c" stroke="#7f1d1d" stroke-width="2"/>
+      <path d="M32 14 L46 19 L46 32 C46 41 39 48 32 50 C25 48 18 41 18 32 L18 19 Z" fill="#fff"/>
+      <path d="M22 28 H42 M22 34 H42 M22 40 H38" stroke="#b91c1c" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>
+    <div>Fix This <small>The Pulse · Ithaca</small></div>
+  </a>
+  <div class="nav-right">
+    <a href="admin.html">city portal</a>
+    <a href="index.html" class="cta">Fix something</a>
+  </div>
+</header>
+<section class="hero">
+  <span class="eyebrow">Live · Ithaca pulse</span>
+  <h1>Things <span class="accent">get fixed</span> when somebody bothers to point at them.</h1>
+  <p class="lede">This is what your neighbors are pointing at right now. Every red pin is a person who refused to walk past a problem.</p>
+</section>
+<div class="numbers">
+  <div class="num-card open"><div class="pulse-dot"></div><div class="label">Open</div><div class="big" id="numOpen">—</div><div class="sub">awaiting a department</div></div>
+  <div class="num-card progress"><div class="label">Being fixed</div><div class="big" id="numProgress">—</div><div class="sub">picked up, in motion</div></div>
+  <div class="num-card resolved"><div class="label">Resolved</div><div class="big" id="numResolved">—</div><div class="sub">all-time fixes</div></div>
+</div>
+<section class="map-strip"><h2>Live Map<span class="live">●</span></h2><div id="pulseMap"></div></section>
+<section class="section"><h2>The wall of fixes</h2><p class="sub">Recent reports, newest first. Tap a card for details.</p><div id="wall" class="wall"></div></section>
+<section class="section"><h2>What's getting reported</h2><p class="sub">Breakdown by department of responsibility. Helps the city see where the pressure is.</p><div id="breakdown" class="breakdown"></div></section>
+<section class="manifesto">
+  <div class="manifesto-inner">
+    <h2>Not all dreamers are builders.<br>But all builders are dreamers.</h2>
+    <p>Most cities have a 311 line nobody picks up. Fix This is different. <em>You point.</em> A photo, a sentence, a tap. <em>The city responds.</em> Out loud. In public. Where everyone can see.</p>
+    <p>Bother. Point at things. The kainaat conspires.</p>
+    <div class="cta-row"><a href="index.html" class="big-red">Fix something →</a></div>
+  </div>
+</section>
+<footer>
+  <div>© 2026 Fix This · An Ithaca / Cornell pilot</div>
+  <div style="margin-top:6px"><a href="index.html">home</a> · <a href="admin.html">city portal</a></div>
+</footer>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="assets/routing.js"></script>
+<script src="assets/storage.js"></script>
+<script>
+(function () {
+  const ITHACA = [42.4440, -76.5019];
+  let map = null, markers = [];
+  function fmtRel(ms) {
+    const diff = (Date.now() - ms) / 1000;
+    if (diff < 60) return "just now";
+    if (diff < 3600) return Math.floor(diff/60) + "m ago";
+    if (diff < 86400) return Math.floor(diff/3600) + "h ago";
+    return Math.floor(diff/86400) + "d ago";
+  }
+  function escapeHtml(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
+  function animateNumber(el, target) {
+    const start = parseInt(el.textContent) || 0;
+    const t0 = performance.now();
+    function frame(t) {
+      const k = Math.min(1, (t - t0) / 800);
+      const ease = 1 - Math.pow(1 - k, 3);
+      el.textContent = Math.round(start + (target - start) * ease);
+      if (k < 1) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+  function statusClass(s) { return s === "Resolved" ? "resolved" : s === "In Progress" ? "progress" : "open"; }
+  function renderAll(reports) {
+    const counts = { Open: 0, "In Progress": 0, Resolved: 0 };
+    for (const r of reports) counts[r.status || "Open"] = (counts[r.status || "Open"] || 0) + 1;
+    animateNumber(document.getElementById("numOpen"), counts.Open);
+    animateNumber(document.getElementById("numProgress"), counts["In Progress"]);
+    animateNumber(document.getElementById("numResolved"), counts.Resolved);
+    renderMap(reports); renderWall(reports); renderBreakdown(reports);
+  }
+  function renderMap(reports) {
+    if (!map) {
+      map = L.map("pulseMap", { zoomControl: true, attributionControl: true, scrollWheelZoom: false }).setView(ITHACA, 14);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+      map.on('click', () => map.scrollWheelZoom.enable());
+    }
+    markers.forEach(m => map.removeLayer(m)); markers = [];
+    const withGeo = reports.filter(r => r.geo && r.geo.lat && r.geo.lon);
+    const bounds = [];
+    for (const r of withGeo) {
+      const cls = statusClass(r.status || "Open");
+      const icon = L.divIcon({ html: '<div class="marker-pin ' + cls + '"></div>', className: '', iconSize: [22,22], iconAnchor: [11,22], popupAnchor: [0,-22] });
+      const m = L.marker([r.geo.lat, r.geo.lon], { icon: icon }).addTo(map);
+      const dro = window.ROUTING.get(r.dro);
+      m.bindPopup('<strong style="font-size:11px;text-transform:uppercase;letter-spacing:.05em">' + escapeHtml(dro.label) + '</strong><br>' + escapeHtml(r.description.slice(0,140)) + '<br><span style="color:#6b7280;font-size:11px">' + escapeHtml(r.status || "Open") + ' · ' + fmtRel(r.createdAt) + '</span>');
+      bounds.push([r.geo.lat, r.geo.lon]); markers.push(m);
+    }
+    if (bounds.length > 1) { try { map.fitBounds(bounds, { padding: [40,40], maxZoom: 16 }); } catch (e) {} }
+  }
+  function renderWall(reports) {
+    const wall = document.getElementById("wall");
+    if (reports.length === 0) {
+      wall.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><strong>The wall is empty… for now.</strong>Be the first to point at something. <a href="index.html" style="color:var(--red);font-weight:700;text-decoration:none">Fix something →</a></div>';
+      return;
+    }
+    const top = reports.slice(0, 12);
+    wall.innerHTML = top.map(r => {
+      const dro = window.ROUTING.get(r.dro);
+      const cls = statusClass(r.status || "Open");
+      const stamp = (r.status || "Open") === "Resolved" ? "fixed" : (r.status === "In Progress" ? "in motion" : "needs help");
+      return '<article class="fix"><div class="img' + (r.photo ? '' : ' empty') + '">' + (r.photo ? '<img src="' + r.photo + '" alt="" loading="lazy" />' : '<span>no photo</span>') + '<span class="stamp ' + cls + '">' + stamp + '</span></div><div class="body"><div class="dept">' + dro.icon + ' ' + escapeHtml(dro.label) + '</div><p class="desc">' + escapeHtml(r.description) + '</p><div class="meta"><span>' + escapeHtml(r.id) + '</span><span>' + fmtRel(r.createdAt) + '</span></div></div></article>';
+    }).join("");
+  }
+  function renderBreakdown(reports) {
+    const breakdown = document.getElementById("breakdown");
+    const counts = {};
+    for (const r of reports) counts[r.dro] = (counts[r.dro] || 0) + 1;
+    const sorted = window.ROUTING.list().map(d => ({ dro: d, n: counts[d.key] || 0 })).sort((a,b) => b.n - a.n);
+    if (reports.length === 0) {
+      breakdown.innerHTML = '<div style="color:var(--muted);text-align:center;padding:14px">No data yet — be the first to file a report.</div>';
+      return;
+    }
+    const max = Math.max(...sorted.map(x => x.n)) || 1;
+    breakdown.innerHTML = sorted.map(x => {
+      const pct = (x.n / max) * 100;
+      return '<div class="bar-row"><div class="name"><span class="ic">' + x.dro.icon + '</span>' + escapeHtml(x.dro.label) + '</div><div class="bar"><div class="fill" style="width:' + pct + '%;background:' + x.dro.color + '"></div></div><div class="count">' + x.n + '</div></div>';
+    }).join("");
+  }
+  function start() {
+    if (window.STORAGE && window.STORAGE.onChange) { window.STORAGE.onChange(renderAll); }
+    else { setTimeout(start, 200); }
+  }
+  start();
+})();
+</script>
+</body>
+</html>
