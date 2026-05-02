@@ -37,6 +37,17 @@
   .top-links .pulse-link{color:var(--red);font-weight:700}
   .top-links .pulse-link::before{content:"\25CF";margin-right:4px;color:var(--red);animation:liveDot 2s infinite}
   @keyframes liveDot{0%,100%{opacity:1}50%{opacity:.4}}
+
+  /* CITE MODAL */
+  .cite-modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;z-index:9999;align-items:center;justify-content:center;padding:20px}
+  .cite-modal.open{display:flex}
+  .cite-card{background:#fff;border-radius:18px;padding:32px;max-width:640px;width:100%;max-height:90vh;overflow-y:auto;position:relative}
+  .cite-card h3{margin:0 0 6px;font-size:24px;font-weight:800}
+  .cite-card .meta{color:var(--muted);font-size:13px;margin:0 0 24px}
+  .cite-card .close{position:absolute;top:14px;right:14px;background:transparent;border:0;font-size:28px;color:var(--muted);cursor:pointer;line-height:1;padding:4px 10px}
+  .cite-card .fmt{margin-bottom:18px}
+  .cite-card .fmt h4{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+  .cite-card .fmt pre{background:var(--paper-2);border-radius:10px;padding:14px;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.55;white-space:pre-wrap;word-break:break-word;margin:0}
   .screen{flex:1;display:flex;flex-direction:column;justify-content:center;animation:fade .25s ease-out}
   @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
   .landing{align-items:center;text-align:center;gap:20px;padding:6vh 0}
@@ -114,13 +125,38 @@
   <div class="top-links">
     <a href="pulse.html" class="pulse-link">Live Pulse</a>
     <a href="admin.html">City Portal</a>
+    <a href="#" onclick="showCite();return false">Cite</a>
   </div>
 </header>
 <main id="app"></main>
 <footer>
   <span>© 2026 Fix This · Ithaca Pilot</span>
-  <span><a href="pulse.html">The Wall of Fixes</a> · <a href="admin.html">City Portal</a></span>
+  <span><a href="pulse.html">The Wall of Fixes</a> · <a href="admin.html">City Portal</a> · <a href="#" onclick="showCite();return false">Cite</a></span>
 </footer>
+
+<div id="citeModal" class="cite-modal" onclick="if(event.target===this)closeCite()">
+  <div class="cite-card">
+    <button class="close" onclick="closeCite()" aria-label="Close">×</button>
+    <h3>Cite this</h3>
+    <p class="meta">Yash Moitra · "Fix This Research Preview ·" · 2026</p>
+    <div class="fmt"><h4>APA</h4><pre>Moitra, Y. (2026). Fix This Research Preview ·. https://fixthis.yashmoitra.com/</pre></div>
+    <div class="fmt"><h4>MLA</h4><pre>Moitra, Yash. "Fix This Research Preview ·." 2026, fixthis.yashmoitra.com.</pre></div>
+    <div class="fmt"><h4>Chicago</h4><pre>Moitra, Yash. 2026. "Fix This Research Preview ·." https://fixthis.yashmoitra.com/.</pre></div>
+    <div class="fmt"><h4>Harvard</h4><pre>Moitra, Y. (2026) Fix This Research Preview ·. Available at: https://fixthis.yashmoitra.com/.</pre></div>
+    <div class="fmt"><h4>IEEE</h4><pre>Y. Moitra, "Fix This Research Preview ·," 2026. [Online]. Available: https://fixthis.yashmoitra.com/</pre></div>
+    <div class="fmt"><h4>BibTeX</h4><pre>@misc{moitra2026fixthis,
+  author = {Yash Moitra},
+  title  = {Fix This Research Preview {\textperiodcentered}},
+  year   = {2026},
+  url    = {https://fixthis.yashmoitra.com/}
+}</pre></div>
+  </div>
+</div>
+<script>
+function showCite(){document.getElementById('citeModal').classList.add('open');document.body.style.overflow='hidden'}
+function closeCite(){document.getElementById('citeModal').classList.remove('open');document.body.style.overflow=''}
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeCite()});
+</script>
 <script src="assets/routing.js"></script>
 <script src="assets/classifier.js"></script>
 <script src="assets/storage.js"></script>
