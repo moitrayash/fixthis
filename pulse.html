@@ -82,6 +82,17 @@
   .manifesto .big-red:active{transform:translateY(4px);box-shadow:0 2px 0 #7f1d1d, 0 6px 14px rgba(185,28,28,.3)}
   footer{padding:30px 22px calc(var(--safe-b) + 30px);text-align:center;font-size:12px;color:var(--muted)}
   footer a{color:var(--muted)}
+    /* CITE MODAL */
+  .cite-modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;z-index:9999;align-items:center;justify-content:center;padding:20px}
+  .cite-modal.open{display:flex}
+  .cite-card{background:#fff;border-radius:18px;padding:32px;max-width:640px;width:100%;max-height:90vh;overflow-y:auto;position:relative}
+  .cite-card h3{margin:0 0 6px;font-size:24px;font-weight:800}
+  .cite-card .meta{color:var(--muted);font-size:13px;margin:0 0 24px}
+  .cite-card .close{position:absolute;top:14px;right:14px;background:transparent;border:0;font-size:28px;color:var(--muted);cursor:pointer;line-height:1;padding:4px 10px}
+  .cite-card .fmt{margin-bottom:18px}
+  .cite-card .fmt h4{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+  .cite-card .fmt pre{background:var(--paper-2);border-radius:10px;padding:14px;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.55;white-space:pre-wrap;word-break:break-word;margin:0}
+
   .marker-pin{width:22px;height:22px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4)}
   .marker-pin.open{background:#dc2626}
   .marker-pin.progress{background:#f59e0b}
@@ -104,6 +115,7 @@
   </a>
   <div class="nav-right">
     <a href="admin.html">City Portal</a>
+    <a href="#" onclick="showCite();return false">Cite</a>
     <a href="index.html" class="cta">Fix something</a>
   </div>
 </header>
@@ -130,8 +142,32 @@
 </section>
 <footer>
   <div>© 2026 Fix This · An Ithaca / Cornell Pilot</div>
-  <div style="margin-top:6px"><a href="index.html">Home</a> · <a href="admin.html">City portal</a></div>
+  <div style="margin-top:6px"><a href="index.html">Home</a> · <a href="admin.html">City Portal</a> · <a href="#" onclick="showCite();return false">Cite</a></div>
 </footer>
+
+<div id="citeModal" class="cite-modal" onclick="if(event.target===this)closeCite()">
+  <div class="cite-card">
+    <button class="close" onclick="closeCite()" aria-label="Close">×</button>
+    <h3>Cite this</h3>
+    <p class="meta">Yash Moitra · "Fix This Research Preview ·" · 2026</p>
+    <div class="fmt"><h4>APA</h4><pre>Moitra, Y. (2026). Fix This Research Preview ·. https://fixthis.yashmoitra.com/</pre></div>
+    <div class="fmt"><h4>MLA</h4><pre>Moitra, Yash. "Fix This Research Preview ·." 2026, fixthis.yashmoitra.com.</pre></div>
+    <div class="fmt"><h4>Chicago</h4><pre>Moitra, Yash. 2026. "Fix This Research Preview ·." https://fixthis.yashmoitra.com/.</pre></div>
+    <div class="fmt"><h4>Harvard</h4><pre>Moitra, Y. (2026) Fix This Research Preview ·. Available at: https://fixthis.yashmoitra.com/.</pre></div>
+    <div class="fmt"><h4>IEEE</h4><pre>Y. Moitra, "Fix This Research Preview ·," 2026. [Online]. Available: https://fixthis.yashmoitra.com/</pre></div>
+    <div class="fmt"><h4>BibTeX</h4><pre>@misc{moitra2026fixthis,
+  author = {Yash Moitra},
+  title  = {Fix This Research Preview {\textperiodcentered}},
+  year   = {2026},
+  url    = {https://fixthis.yashmoitra.com/}
+}</pre></div>
+  </div>
+</div>
+<script>
+function showCite(){document.getElementById('citeModal').classList.add('open');document.body.style.overflow='hidden'}
+function closeCite(){document.getElementById('citeModal').classList.remove('open');document.body.style.overflow=''}
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeCite()});
+</script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="assets/routing.js"></script>
 <script src="assets/storage.js"></script>
