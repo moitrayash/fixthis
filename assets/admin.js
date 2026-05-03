@@ -1,4 +1,4 @@
-/* Fix This — admin / city-portal controller (kanban + map edition) */
+/* Fix This — admin / city-portal controller (kanban + map + trash) */
 (() => {
   const root = document.getElementById("root");
   const who = document.getElementById("who");
@@ -21,7 +21,15 @@
   function setSession(s) { sessionStorage.setItem(SESSION_KEY, JSON.stringify(s)); }
   function clearSession() { sessionStorage.removeItem(SESSION_KEY); }
 
-  function toast(msg, ms) { ms = ms || 1800; const n = el('<div class="toast">' + escapeHtml(msg) + '</div>'); document.body.appendChild(n); setTimeout(() => n.remove(), ms); }
+  function toast(msg, ms) { ms = ms || 1800; const n = el('<div class="toast">' + escapeHtml(msg) + '</div>'); document.body.appendChild(n); setTimeout(() => n.remove(), ms); return n; }
+  function toastWithUndo(msg, undoFn, ms) {
+    ms = ms || 5000;
+    const n = el('<div class="toast">' + escapeHtml(msg) + ' &nbsp; <button id="undoBtn" style="margin-left:6px;background:transparent;color:#fbbf24;border:0;padding:0;font-weight:800;text-transform:uppercase;font-size:12px;letter-spacing:.05em;cursor:pointer">Undo</button></div>');
+    document.body.appendChild(n);
+    const t = setTimeout(() => n.remove(), ms);
+    n.querySelector("#undoBtn").addEventListener("click", () => { clearTimeout(t); n.remove(); try { undoFn(); } catch(e) {} });
+    return n;
+  }
 
   function copyToClipboard(text) {
     return new Promise((resolve) => {
@@ -87,6 +95,7 @@
     const isMaster = session.scope === "ALL";
     let q = "";
     let view = localStorage.getItem(VIEW_KEY) || "kanban";
+    if (view !== "kanban" && view !== "map" && view !== "trash") view = "kanban";
     let mapInstance = null;
     let mapMarkers = [];
 
@@ -97,33 +106,48 @@
       const all = window.STORAGE.list();
       return isMaster ? all : all.filter(r => r.dro === session.scope);
     }
+    function activeOnly(list) { return list.filter(r => !r.trashed); }
+    function trashedOnly(list) { return list.filter(r => r.trashed); }
 
     function renderMain() {
       const reports = getReports();
-      const filtered = q ? reports.filter(r => (r.description + " " + (r.extra || "") + " " + r.id).toLowerCase().includes(q.toLowerCase())) : reports;
+      const active = activeOnly(reports);
+      const trashed = trashedOnly(reports);
+      const pool = view === "trash" ? trashed : active;
+      const filtered = q ? pool.filter(r => (r.description + " " + (r.extra || "") + " " + r.id).toLowerCase().includes(q.toLowerCase())) : pool;
       const counts = { Open: 0, "In Progress": 0, Resolved: 0, urgent: 0 };
-      for (const r of reports) { counts[r.status] = (counts[r.status] || 0) + 1; if (r.emergency) counts.urgent++; }
-      const withGeo = reports.filter(r => r.geo).length;
+      for (const r of active) { counts[r.status] = (counts[r.status] || 0) + 1; if (r.emergency) counts.urgent++; }
+      const withGeo = active.filter(r => r.geo).length;
+      const trashCount = trashed.length;
 
-      root.innerHTML = '<div class="toolbar"><input id="searchInp" placeholder="Search ticket ID, description…" value="' + escapeHtml(q) + '" /><div class="view-toggle"><button id="viewKanban" class="' + (view === "kanban" ? "active" : "") + '">Kanban</button><button id="viewMap" class="' + (view === "map" ? "active" : "") + '">Map ' + (withGeo ? '<span style="opacity:.7;margin-left:4px">' + withGeo + '</span>' : '') + '</button></div><div class="stats"><div class="stat"><strong>' + counts.Open + '</strong>open</div><div class="stat"><strong>' + counts["In Progress"] + '</strong>in progress</div><div class="stat"><strong>' + counts.Resolved + '</strong>resolved</div>' + (counts.urgent ? '<div class="stat" style="background:#fee2e2;border-color:#fecaca"><strong style="color:#b91c1c">' + counts.urgent + '</strong>urgent</div>' : '') + '</div></div>' + (view === "kanban" ? renderKanban(filtered) : renderMap(filtered));
+      root.innerHTML = '<div class="toolbar"><input id="searchInp" placeholder="Search ticket ID, description…" value="' + escapeHtml(q) + '" /><div class="view-toggle"><button id="viewKanban" class="' + (view === "kanban" ? "active" : "") + '">Kanban</button><button id="viewMap" class="' + (view === "map" ? "active" : "") + '">Map ' + (withGeo ? '<span style="opacity:.7;margin-left:4px">' + withGeo + '</span>' : '') + '</button><button id="viewTrash" class="' + (view === "trash" ? "active" : "") + '">Trash' + (trashCount ? ' <span style="opacity:.7;margin-left:4px">' + trashCount + '</span>' : '') + '</button></div><div class="stats"><div class="stat"><strong>' + counts.Open + '</strong>open</div><div class="stat"><strong>' + counts["In Progress"] + '</strong>in progress</div><div class="stat"><strong>' + counts.Resolved + '</strong>resolved</div>' + (counts.urgent ? '<div class="stat" style="background:#fee2e2;border-color:#fecaca"><strong style="color:#b91c1c">' + counts.urgent + '</strong>urgent</div>' : '') + '</div></div>' + (view === "kanban" ? renderKanban(filtered) : view === "map" ? renderMap(filtered) : renderTrash(filtered));
 
       root.querySelector("#searchInp").addEventListener("input", e => { q = e.target.value; renderMain(); });
       root.querySelector("#viewKanban").addEventListener("click", () => { view = "kanban"; localStorage.setItem(VIEW_KEY, view); destroyMap(); renderMain(); });
       root.querySelector("#viewMap").addEventListener("click", () => { view = "map"; localStorage.setItem(VIEW_KEY, view); renderMain(); });
+      root.querySelector("#viewTrash").addEventListener("click", () => { view = "trash"; localStorage.setItem(VIEW_KEY, view); destroyMap(); renderMain(); });
 
-      if (view === "kanban") { wireDragDrop(); wireTapActions(); wireCopyButtons(); wirePhotoZoom(); }
+      if (view === "kanban") { wireDragDrop(); wireTapActions(); wireCopyButtons(); wirePhotoZoom(); wireTrashButtons(); }
+      else if (view === "trash") { wireCopyButtons(); wirePhotoZoom(); wireRestoreButtons(); }
       else { setTimeout(() => mountMap(filtered), 30); }
     }
 
     function renderKanban(filtered) {
       return '<div class="board">' + STATUSES.map(s => {
         const inThisCol = filtered.filter(r => (r.status || "Open") === s);
-        return '<div class="col" data-status="' + s + '"><div class="col-head"><span>' + s + '</span><span class="count">' + inThisCol.length + '</span></div><div class="col-list" data-status="' + s + '">' + (inThisCol.length === 0 ? '<div class="col-empty">drop tickets here</div>' : inThisCol.map(receiptHtml).join("")) + '</div></div>';
+        return '<div class="col" data-status="' + s + '"><div class="col-head"><span>' + s + '</span><span class="count">' + inThisCol.length + '</span></div><div class="col-list" data-status="' + s + '">' + (inThisCol.length === 0 ? '<div class="col-empty">drop tickets here</div>' : inThisCol.map(r => receiptHtml(r, "active")).join("")) + '</div></div>';
       }).join("") + '</div>';
     }
 
     function renderMap(filtered) {
       return '<div class="map-pane"><div id="leafletMap"></div><div class="map-legend"><span><span class="dot open"></span>Open</span><span><span class="dot progress"></span>In Progress</span><span><span class="dot resolved"></span>Resolved</span><span style="margin-left:auto;color:var(--muted)">' + filtered.filter(r => r.geo).length + ' of ' + filtered.length + ' tickets have a location · click a pin for details</span></div></div>';
+    }
+
+    function renderTrash(filtered) {
+      if (filtered.length === 0) {
+        return '<div class="trash-pane"><div class="trash-empty"><strong>Nothing in the trash.</strong><p>Tickets you trash from the Kanban or Map view land here. They\'re hidden from the public Pulse and the citizen counter, but kept on file. Tap <em>Restore</em> to bring one back.</p></div></div>';
+      }
+      return '<div class="trash-pane"><p class="trash-note">Trashed tickets are hidden from the Kanban, Map, public Pulse, and citizen counter. They are <strong>not</strong> deleted — they stay on file. Tap <em>Restore</em> to bring one back.</p><div class="trash-list">' + filtered.map(r => receiptHtml(r, "trash")).join("") + '</div></div>';
     }
 
     function destroyMap() {
@@ -151,7 +175,7 @@
       if (bounds.length > 0) { try { mapInstance.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 }); } catch (e) {} }
     }
 
-    function receiptHtml(r) {
+    function receiptHtml(r, mode) {
       const photoTimeLine = r.takenAt ? '<div class="meta-line" title="When the photo was taken (from EXIF)"><span>📷 ' + fmtDate(r.takenAt) + (r.takenAtSource === "file-mtime" ? ' <span style="color:var(--muted);font-size:10px">(file mtime)</span>' : '') + '</span><span style="color:var(--muted);font-size:10px">submitted ' + fmtDate(r.createdAt) + '</span></div>' : '';
       const dro = window.ROUTING.get(r.dro);
       const owner = r.owner || dro.owners[0];
@@ -159,7 +183,11 @@
       const subject = "Fix This ticket " + r.id + " — " + dro.label;
       const body = "Ticket: " + r.id + "\nDepartment: " + dro.label + "\nStatus: " + (r.status || "Open") + "\n" + (mapsUrl ? "Location: " + mapsUrl + "\n" : "") + "\nReported: " + r.description + (r.extra ? "\n\nExtra: " + r.extra : "");
       const mailto = owner.email ? "mailto:" + owner.email + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body) : null;
-      return '<article class="receipt" draggable="true" data-id="' + r.id + '"><div class="id"><span>' + escapeHtml(r.id) + '</span><span class="dept">' + dro.icon + ' ' + escapeHtml(dro.label.toUpperCase()) + '</span></div>' + (r.photo ? '<div class="photo" style="background-image:url(' + r.photo + ')" data-img="' + r.photo + '"></div>' : '<div class="photo empty">no photo</div>') + '<p class="desc">' + escapeHtml(r.description) + '</p>' + (r.extra ? '<p class="desc" style="font-size:12px;color:#555;font-weight:400">' + escapeHtml(r.extra) + '</p>' : '') + '<div class="meta-line"><span>' + fmtDate(r.createdAt) + '</span>' + (r.emergency ? '<span class="urgent">urgent</span>' : '') + '</div>' + photoTimeLine + '<div class="meta-line">' + (mapsUrl ? '<span>📍 <a href="' + mapsUrl + '" target="_blank" rel="noopener" style="color:#000">' + r.geo.lat.toFixed(4) + ', ' + r.geo.lon.toFixed(4) + '</a></span>' : '<span style="color:var(--warn)">📍 no location</span>') + '</div><div class="meta-line"><span>→ <strong>' + escapeHtml(owner.scope) + '</strong></span></div>' + (owner.email ? '<div class="actions-row"><a href="' + (mailto || '#') + '">Email</a><button class="ghost copy-email" data-email="' + escapeHtml(owner.email) + '">Copy</button></div>' : '') + '</article>';
+      const trashedLine = r.trashed && r.trashedAt ? '<div class="meta-line" style="color:var(--red)"><span>🗑 trashed ' + fmtDate(r.trashedAt) + (r.trashedBy ? ' by ' + escapeHtml(r.trashedBy) : '') + '</span></div>' : '';
+      const actionsRow = mode === "trash"
+        ? '<div class="actions-row"><button class="restore-btn" data-id="' + escapeHtml(r.id) + '">↩ Restore</button>' + (mailto ? '<button class="ghost copy-email" data-email="' + escapeHtml(owner.email) + '">Copy email</button>' : '') + '</div>'
+        : ((mailto ? '<div class="actions-row"><a href="' + mailto + '">Email</a><button class="ghost copy-email" data-email="' + escapeHtml(owner.email) + '">Copy</button><button class="ghost danger trash-btn" data-id="' + escapeHtml(r.id) + '" title="Move to trash (recoverable)">🗑 Trash</button></div>' : '<div class="actions-row"><button class="ghost danger trash-btn" data-id="' + escapeHtml(r.id) + '" title="Move to trash (recoverable)">🗑 Trash</button></div>'));
+      return '<article class="receipt' + (mode === "trash" ? " trashed" : "") + '"' + (mode === "active" ? ' draggable="true"' : '') + ' data-id="' + r.id + '"><div class="id"><span>' + escapeHtml(r.id) + '</span><span class="dept">' + dro.icon + ' ' + escapeHtml(dro.label.toUpperCase()) + '</span></div>' + (r.photo ? '<div class="photo" style="background-image:url(' + r.photo + ')" data-img="' + r.photo + '"></div>' : '<div class="photo empty">no photo</div>') + '<p class="desc">' + escapeHtml(r.description) + '</p>' + (r.extra ? '<p class="desc" style="font-size:12px;color:#555;font-weight:400">' + escapeHtml(r.extra) + '</p>' : '') + '<div class="meta-line"><span>' + fmtDate(r.createdAt) + '</span>' + (r.emergency ? '<span class="urgent">urgent</span>' : '') + '</div>' + photoTimeLine + '<div class="meta-line">' + (mapsUrl ? '<span>📍 <a href="' + mapsUrl + '" target="_blank" rel="noopener" style="color:#000">' + r.geo.lat.toFixed(4) + ', ' + r.geo.lon.toFixed(4) + '</a></span>' : '<span style="color:var(--warn)">📍 no location</span>') + '</div><div class="meta-line"><span>→ <strong>' + escapeHtml(owner.scope) + '</strong></span></div>' + trashedLine + actionsRow + '</article>';
     }
 
     function wireDragDrop() {
@@ -206,13 +234,52 @@
         p.addEventListener("click", e => { e.stopPropagation(); const m = el('<div class="modal"><img src="' + p.dataset.img + '" /></div>'); m.addEventListener("click", () => m.remove()); document.body.appendChild(m); });
       });
     }
+    function wireTrashButtons() {
+      root.querySelectorAll(".trash-btn").forEach(b => {
+        b.addEventListener("click", e => {
+          e.preventDefault(); e.stopPropagation();
+          const id = b.dataset.id;
+          window.STORAGE.update(id, { trashed: true, trashedAt: Date.now(), trashedBy: session.email });
+          toastWithUndo("Moved " + id + " to trash", () => {
+            window.STORAGE.update(id, { trashed: false, trashedAt: null, trashedBy: null });
+            renderMain();
+          });
+          renderMain();
+        });
+      });
+    }
+    function wireRestoreButtons() {
+      root.querySelectorAll(".restore-btn").forEach(b => {
+        b.addEventListener("click", e => {
+          e.preventDefault(); e.stopPropagation();
+          const id = b.dataset.id;
+          window.STORAGE.update(id, { trashed: false, trashedAt: null, trashedBy: null });
+          toast("Restored " + id);
+          renderMain();
+        });
+      });
+    }
     function openMoveSheet(id) {
       const r = window.STORAGE.get(id); if (!r) return;
       const cur = r.status || "Open";
-      const sheet = el('<div class="sheet-bg"><div class="sheet"><h3>Move ticket ' + escapeHtml(id) + '</h3><p style="margin:0 0 6px;color:var(--muted);font-size:12px">Currently: <strong>' + escapeHtml(cur) + '</strong></p>' + STATUSES.map(s => '<button class="opt' + (s === cur ? ' current' : '') + '" data-status="' + s + '"><span>' + s + '</span><span>' + (s === "Open" ? "🔴" : s === "In Progress" ? "🟡" : "🟢") + '</span></button>').join("") + '<div class="cancel">cancel</div></div></div>');
+      const sheet = el('<div class="sheet-bg"><div class="sheet"><h3>Move ticket ' + escapeHtml(id) + '</h3><p style="margin:0 0 6px;color:var(--muted);font-size:12px">Currently: <strong>' + escapeHtml(cur) + '</strong></p>' + STATUSES.map(s => '<button class="opt' + (s === cur ? ' current' : '') + '" data-status="' + s + '"><span>' + s + '</span><span>' + (s === "Open" ? "🔴" : s === "In Progress" ? "🟡" : "🟢") + '</span></button>').join("") + '<button class="opt opt-trash" data-action="trash"><span>🗑 Move to trash</span><span style="color:var(--red)">⌫</span></button><div class="cancel">cancel</div></div></div>');
       function close() { sheet.remove(); }
       sheet.addEventListener("click", e => { if (e.target === sheet) close(); if (e.target.closest(".cancel")) close(); });
-      sheet.querySelectorAll(".opt").forEach(b => { b.addEventListener("click", () => { const newStatus = b.dataset.status; if (newStatus !== cur) { window.STORAGE.update(id, { status: newStatus }); toast("Moved to " + newStatus); } close(); renderMain(); }); });
+      sheet.querySelectorAll(".opt").forEach(b => {
+        b.addEventListener("click", () => {
+          if (b.dataset.action === "trash") {
+            window.STORAGE.update(id, { trashed: true, trashedAt: Date.now(), trashedBy: session.email });
+            toastWithUndo("Moved " + id + " to trash", () => {
+              window.STORAGE.update(id, { trashed: false, trashedAt: null, trashedBy: null });
+              renderMain();
+            });
+          } else {
+            const newStatus = b.dataset.status;
+            if (newStatus !== cur) { window.STORAGE.update(id, { status: newStatus }); toast("Moved to " + newStatus); }
+          }
+          close(); renderMain();
+        });
+      });
       document.body.appendChild(sheet);
     }
 
