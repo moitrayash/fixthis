@@ -139,7 +139,8 @@
       window.STORAGE.onChange(function (reports) {
         const elc = node.querySelector('#liveCount');
         if (!elc) return;
-        const total = reports.length || 0;
+        const live = reports.filter(function (r) { return !r.trashed; });
+        const total = live.length || 0;
         elc.textContent = total === 0 ? 'Be the first' : total;
         const span = elc.parentElement;
         if (total === 0 && span) span.innerHTML = '<strong>Be the first</strong> to fix something';
