@@ -127,10 +127,11 @@
   function landing() {
     const node = el(
       '<section class="screen landing">' +
-        '<h1>Something<br>broken?</h1>' +
-        '<p>Take one quick pic, write one quick sentence, and that’s it.</p>' +
-        '<button class="big-red" id="startBtn">Fix this!</button>' +
-        '<span class="pill">Ithaca · Cornell pilot</span>' +
+        '<h1>Report broken stuff<br>in Ithaca.</h1>' +
+        '<p style="font-weight:600;color:var(--ink);max-width:34ch">Potholes · Streetlights · Trash · Benches · Sidewalks · Buses</p>' +
+        '<p>Snap a photo. One sentence. We send it to the city office that can actually fix it.</p>' +
+        '<button class="big-red" id="startBtn">Report something</button>' +
+        '<span class="pill">Free · No login · Ithaca + Cornell pilot</span>' +
         '<a href="pulse.html" class="live-strip" id="liveStrip"><span class="dot"></span><span><strong id="liveCount">—</strong> things being fixed in Ithaca</span><span class="arrow">→</span></a>' +
       '</section>'
     );
