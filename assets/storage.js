@@ -1,31 +1,14 @@
-/* Fix This — storage layer (v2).
+/* Fix This — storage layer (v2.1).
    ----------------------------------------------------------------
    Schema-validated, adapter-based persistence. Public surface kept
    backward-compatible with v1 (app.js / admin.js need no changes),
    plus new query/aggregate/export hooks for the export.js module
    and third-party integrations.
 
-   Architecture:
-       app.js / admin.js / export.js
-                      │
-                      ▼
-                 STORAGE  (this file, public API)
-                      │
-                      ▼
-                 Adapter  (Firestore | Local)
-                      │
-                      ▼
-                 Backend  (Firestore | localStorage)
-
-   The schema (assets/schema.js) is the contract between the adapters
-   and consumers. All reads pass through SCHEMA.normalize(); all writes
-   pass through SCHEMA.validate() before hitting the wire.
-
-   Backward compatibility:
-   On the way OUT to consumers we attach legacy camelCase aliases
-   (createdAt, takenAt, photoMeta, ...) alongside the canonical
-   snake_case fields. New code should read snake_case; old code keeps
-   working unchanged.
+   v2.1: removed server-side orderBy("created_at") — Firestore filters
+   out docs that lack the field, which dropped every legacy doc. Now
+   we orderBy nothing and sort client-side so both v1 (createdAt) and
+   v2 (created_at) records come through.
 */
 (function () {
   "use strict";
@@ -48,7 +31,6 @@
   const SDK_BASE = "https://www.gstatic.com/firebasejs/10.13.2/";
   const COLL = "reports";
 
-  // ---------- DOM helpers ----------
   function loadScript(src) {
     return new Promise(function (resolve, reject) {
       const s = document.createElement("script");
@@ -92,16 +74,18 @@
   function decorate(r) {
     if (!r) return r;
     for (let i = 0; i < ALIAS_PAIRS.length; i++) {
-      const [canon, legacy] = ALIAS_PAIRS[i];
+      const canon = ALIAS_PAIRS[i][0], legacy = ALIAS_PAIRS[i][1];
       if (r[canon] !== undefined && r[legacy] === undefined) r[legacy] = r[canon];
+    }
+    // Also keep the legacy `geo` shape alongside `location` so older admin.js
+    // code that looks at r.geo.lat / r.geo.lon doesn't break.
+    if (r.location && !r.geo) {
+      r.geo = { lat: r.location.lat, lng: r.location.lng, lon: r.location.lng };
     }
     return r;
   }
 
-  // ---------- Adapter interface ----------
-  // Every adapter implements: ready(), subscribe(onChange), put(report), patch(id, partial).
-  // Reads come from a local cache that the adapter is responsible for keeping fresh.
-
+  // ---------- Adapters ----------
   function FirestoreAdapter() {
     let dbReady = (async function () {
       await loadScript(SDK_BASE + "firebase-app-compat.js");
@@ -113,21 +97,20 @@
       name: "firestore",
       ready: function () { return dbReady; },
       subscribe: function (onSnap) {
+        // No server-side orderBy: legacy docs use `createdAt`, new docs use
+        // `created_at`. Firestore filters out docs lacking the orderBy field,
+        // so we sort client-side after the snapshot lands.
         return dbReady.then(function (db) {
-          return db.collection(COLL).orderBy("created_at", "desc").onSnapshot(function (snap) {
-            onSnap(snap.docs.map(function (d) { return d.data(); }));
-          }, function (err) {
-            // Fallback to legacy createdAt ordering if old docs lack created_at
-            console.warn("Firestore order(created_at) failed, falling back", err && err.code);
-            db.collection(COLL).onSnapshot(function (snap) {
-              const docs = snap.docs.map(function (d) { return d.data(); });
-              docs.sort(function (a, b) {
-                const ta = +new Date(a.created_at || a.createdAt || 0);
-                const tb = +new Date(b.created_at || b.createdAt || 0);
-                return tb - ta;
-              });
-              onSnap(docs);
+          return db.collection(COLL).onSnapshot(function (snap) {
+            const docs = snap.docs.map(function (d) { return d.data(); });
+            docs.sort(function (a, b) {
+              const ta = +new Date(a.created_at || a.createdAt || 0);
+              const tb = +new Date(b.created_at || b.createdAt || 0);
+              return tb - ta;
             });
+            onSnap(docs);
+          }, function (err) {
+            console.error("Firestore subscription error", err);
           });
         });
       },
@@ -166,13 +149,12 @@
     };
   }
 
-  // ---------- Pick adapter ----------
   let adapter;
   try { adapter = FirestoreAdapter(); }
   catch (e) { console.warn("Firestore unavailable, using local adapter", e); adapter = LocalAdapter(); }
 
   // ---------- Cache + listeners ----------
-  let cache = [];                  // canonical Reports, decorated with legacy aliases
+  let cache = [];
   let listeners = [];
   function notify() { listeners.forEach(function (fn) { try { fn(cache); } catch (e) {} }); }
   function onChange(fn) { listeners.push(fn); fn(cache); return function () { listeners = listeners.filter(function (x) { return x !== fn; }); }; }
@@ -182,7 +164,6 @@
     notify();
   });
 
-  // Final fallback: if Firestore never comes up, hydrate from localStorage
   setTimeout(function () {
     if (cache.length === 0 && adapter.name === "firestore") {
       try {
@@ -202,7 +183,6 @@
   }
   function get(id) { return cache.find(function (r) { return r.id === id; }); }
 
-  // Richer query: { status, dro, severity, since, until, owner_scope, q (full-text on description) }
   function query(spec) {
     spec = spec || {};
     return cache.filter(function (r) {
@@ -225,7 +205,6 @@
     return true;
   }
 
-  // Aggregations for dashboards
   function countBy(field) {
     const out = {};
     for (let i = 0; i < cache.length; i++) {
@@ -252,12 +231,10 @@
       console.error("STORAGE.save validation failed", v.errors, report);
       throw new Error("Invalid report: " + v.errors.join("; "));
     }
-    // Optimistic local insert
     const decorated = decorate(Object.assign({}, report));
     cache = [decorated].concat(cache.filter(function (x) { return x.id !== report.id; }));
     notify();
 
-    // Compress photo, then write
     (async function () {
       const toSave = Object.assign({}, report);
       if (toSave.photo && /^data:/.test(toSave.photo)) {
@@ -269,7 +246,6 @@
         await adapter.put(toSave);
       } catch (e) {
         console.error("STORAGE.save adapter error", e);
-        // Local backup so we don't lose the report
         try {
           const arr = JSON.parse(localStorage.getItem("fixthis_reports_v3") || "[]");
           arr.unshift(toSave);
@@ -284,19 +260,14 @@
     const i = cache.findIndex(function (r) { return r.id === id; });
     if (i === -1) return null;
     const next = Object.assign({}, cache[i], patch, { updated_at: new Date().toISOString() });
-    if (patch.status === S.Status.RESOLVED && !next.resolved_at) {
-      next.resolved_at = next.updated_at;
-    }
+    if (patch.status === S.Status.RESOLVED && !next.resolved_at) next.resolved_at = next.updated_at;
     cache[i] = decorate(S.normalize(next));
     notify();
-
     const wirePatch = Object.assign({}, patch, {
       updated_at: cache[i].updated_at,
       resolved_at: cache[i].resolved_at || null
     });
-    adapter.patch(id, wirePatch).catch(function (e) {
-      console.error("STORAGE.update adapter error", e);
-    });
+    adapter.patch(id, wirePatch).catch(function (e) { console.error("STORAGE.update adapter error", e); });
     return cache[i];
   }
 
@@ -308,20 +279,20 @@
     return "FIX-" + datePart + "-" + rand;
   }
 
-  // ---------- Employees (local directory) ----------
+  // ---------- Employees ----------
   const EMP_KEY = "fixthis_employees_v1";
   const DEFAULT_EMPLOYEES = [
     { email: "admin@fixthis.local",        password: "city2024",    scope: "ALL",       name: "Master Admin",                 role: "Citywide Coordinator" },
-    { email: "roads@cityofithaca.org",     password: "roads2024",   scope: "ROADS",     name: "Ithaca DPW · Roads",           role: "Streets Supervisor" },
-    { email: "water@cityofithaca.org",     password: "water2024",   scope: "WATER",     name: "Ithaca Water & Sewer",         role: "Operations Lead" },
+    { email: "roads@cityofithaca.org",     password: "roads2024",   scope: "ROADS",     name: "Ithaca DPW Roads",             role: "Streets Supervisor" },
+    { email: "water@cityofithaca.org",     password: "water2024",   scope: "WATER",     name: "Ithaca Water and Sewer",       role: "Operations Lead" },
     { email: "dpw@cityofithaca.org",       password: "waste2024",   scope: "WASTE",     name: "Ithaca Sanitation",            role: "Operations Lead" },
-    { email: "parks@cityofithaca.org",     password: "parks2024",   scope: "PARKS",     name: "Ithaca Parks",                 role: "Forestry & Parks" },
+    { email: "parks@cityofithaca.org",     password: "parks2024",   scope: "PARKS",     name: "Ithaca Parks",                 role: "Forestry and Parks" },
     { email: "tcat@tcatmail.com",          password: "transit2024", scope: "TRANSIT",   name: "TCAT Operations",              role: "Customer Service" },
-    { email: "fcs-help@cornell.edu",       password: "lights2024",  scope: "LIGHTING",  name: "Cornell FCS · Lighting",       role: "Facilities" },
+    { email: "fcs-help@cornell.edu",       password: "lights2024",  scope: "LIGHTING",  name: "Cornell FCS Lighting",         role: "Facilities" },
     { email: "scl-facilities@cornell.edu", password: "build2024",   scope: "BUILDINGS", name: "Cornell Housing Maintenance",  role: "Facilities Manager" },
     { email: "itservicedesk@cornell.edu",  password: "it2024",      scope: "IT",        name: "Cornell IT Service Desk",      role: "Triage" },
     { email: "info@spcaonline.com",        password: "spca2024",    scope: "ANIMAL",    name: "SPCA Tompkins",                role: "Animal Control" },
-    { email: "askehs@cornell.edu",         password: "ehs2024",     scope: "SAFETY",    name: "Cornell EHS",                  role: "Health & Safety" }
+    { email: "askehs@cornell.edu",         password: "ehs2024",     scope: "SAFETY",    name: "Cornell EHS",                  role: "Health and Safety" }
   ];
   function _readEmployees() {
     try {
@@ -355,24 +326,12 @@
     };
   }
 
-  // ---------- Public surface ----------
   window.STORAGE = {
-    // v1 surface (kept compatible)
-    list: list,
-    get: get,
-    save: save,
-    update: update,
-    generateId: generateId,
-    findEmployee: findEmployee,
-    checkPassword: checkPassword,
+    list: list, get: get, save: save, update: update, generateId: generateId,
+    findEmployee: findEmployee, checkPassword: checkPassword,
     captureMetadata: captureMetadata,
     onChange: onChange,
     backend: adapter.name,
-
-    // v2 additions
-    schema: S,
-    query: query,
-    stats: stats,
-    countBy: countBy
+    schema: S, query: query, stats: stats, countBy: countBy
   };
 })();
