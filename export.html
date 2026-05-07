@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#111111" />
+<title>Fix This · Export &amp; Integrations</title>
+<link rel="icon" type="image/svg+xml" href="assets/crest.svg" />
+<style>
+  :root{
+    --ink:#111;--paper:#f4f1ea;--paper-2:#ebe5d6;--line:#c9bfa6;--muted:#6b7280;
+    --red:#b91c1c;--red-bg:#fee2e2;--ok:#15803d;--ok-bg:#dcfce7;--warn:#b45309;--warn-bg:#fef3c7;
+    --safe-t: env(safe-area-inset-top, 0px); --safe-b: env(safe-area-inset-bottom, 0px);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--paper);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:1.5}
+  body{min-height:100dvh;display:flex;flex-direction:column;padding:calc(var(--safe-t) + 16px) 16px calc(var(--safe-b) + 16px)}
+  button,input,select,textarea{font:inherit;color:inherit}
+  button{cursor:pointer;border:0;background:transparent}
+  a{color:var(--ink)}
+
+  .topbar{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:12px}
+  .crest{display:flex;align-items:center;gap:10px;font-weight:700}
+  .crest svg{width:28px;height:28px}
+  .crest small{display:block;font-weight:500;color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+  .who{font-size:13px;color:var(--muted);text-align:right}
+  .who strong{display:block;color:var(--ink);font-size:14px}
+  .who a{color:var(--red);text-decoration:none}
+
+  .login{flex:1;display:flex;align-items:center;justify-content:center;padding:20px}
+  .login .card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:28px;width:min(420px,94vw);box-shadow:0 4px 12px rgba(0,0,0,.06)}
+  .login h1{margin:0 0 8px;font-size:26px;font-weight:800}
+  .login p{margin:0 0 18px;color:var(--muted)}
+  .login label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:6px;letter-spacing:.04em;text-transform:uppercase}
+  .login input{width:100%;padding:14px;border:2px solid var(--line);border-radius:12px;background:#fff;outline:none;font-size:16px;margin-bottom:14px}
+  .login input:focus{border-color:var(--ink)}
+  .login button.primary{background:var(--ink);color:#fff;font-weight:700;padding:14px;border-radius:12px;width:100%;font-size:16px}
+  .login .err{background:var(--red-bg);color:#991b1b;padding:12px;border-radius:10px;font-size:13px;margin-bottom:12px}
+
+  .wrap{flex:1;max-width:1100px;width:100%;margin:18px auto 0}
+  h2.section{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:18px 0 10px}
+
+  .filters{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+  .filters label{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+  .filters select,.filters input{width:100%;padding:9px 10px;border:1.5px solid var(--line);border-radius:9px;background:#fff;font-size:13px}
+
+  .summary{display:flex;gap:8px;margin:14px 0;flex-wrap:wrap}
+  .stat{background:#fff;border:1px solid var(--line);padding:6px 12px;border-radius:10px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+  .stat strong{color:var(--ink);font-size:18px;display:block;font-weight:800;line-height:1.1}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px}
+  .card h3{margin:0;font-size:16px;font-weight:800}
+  .card .desc{color:var(--muted);font-size:13px;margin:0;flex:1}
+  .card .meta{font-size:11px;color:var(--muted);font-family:ui-monospace,Menlo,monospace}
+  .card .row{display:flex;gap:8px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:6px;background:var(--ink);color:#fff;padding:10px 14px;border-radius:10px;font-weight:700;font-size:13px;text-decoration:none}
+  .btn.alt{background:#fff;color:var(--ink);border:1.5px solid var(--ink)}
+  .btn:hover{opacity:.9}
+
+  .preview{background:#0f172a;color:#e2e8f0;border-radius:12px;padding:14px;margin-top:14px;font-family:ui-monospace,Menlo,monospace;font-size:12px;max-height:280px;overflow:auto;white-space:pre;line-height:1.5}
+  .preview-tabs{display:flex;gap:6px;margin-top:14px;flex-wrap:wrap}
+  .preview-tabs button{padding:7px 12px;font-size:12px;font-weight:700;border-radius:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;background:#fff;border:1px solid var(--line)}
+  .preview-tabs button.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+  .integrations{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;margin-top:18px}
+  .integrations h3{margin:0 0 6px;font-size:16px;font-weight:800}
+  .integrations p{margin:0 0 12px;color:var(--muted);font-size:13px}
+  .integrations code{background:var(--paper-2);padding:2px 6px;border-radius:5px;font-size:12px}
+  .integrations ul{margin:0;padding-left:18px}
+  .integrations li{margin:4px 0;font-size:13px}
+
+  footer{margin-top:24px;padding-top:14px;border-top:1px solid var(--line);display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+  footer a{color:var(--muted);text-decoration:none}
+  footer a:hover{color:var(--ink)}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="crest">
+    <svg viewBox="0 0 64 64" aria-hidden="true">
+      <path d="M32 4 L56 14 L56 32 C56 46 45 56 32 60 C19 56 8 46 8 32 L8 14 Z" fill="#111" stroke="#000" stroke-width="2"/>
+      <path d="M32 14 L46 19 L46 32 C46 41 39 48 32 50 C25 48 18 41 18 32 L18 19 Z" fill="#fff"/>
+      <path d="M22 28 H42 M22 34 H42 M22 40 H38" stroke="#111" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>
+    <div>Fix This <small>Export &amp; Integrations</small></div>
+  </div>
+  <div class="who" id="who"></div>
+</header>
+
+<div id="root"></div>
+
+<footer>
+  <span>&copy; 2026 Fix This &middot; Authorized Personnel Only</span>
+  <span><a href="admin.html">&larr; Back to Kanban</a></span>
+</footer>
+
+<script src="assets/routing.js"></script>
+<script src="assets/schema.js"></script>
+<script src="assets/storage.js"></script>
+<script src="assets/export.js"></script>
+<script>
+(function () {
+  "use strict";
+  const $root = document.getElementById("root");
+  const $who  = document.getElementById("who");
+
+  const session = (function () {
+    try { return JSON.parse(sessionStorage.getItem("fixthis_session") || "null"); }
+    catch (e) { return null; }
+  })();
+
+  if (!session || !session.email) {
+    renderLogin();
+  } else {
+    renderApp(session);
+  }
+
+  // ---------- Login gate (mirrors admin.html) ----------
+  function renderLogin() {
+    $root.innerHTML = ''
+      + '<div class="login"><div class="card">'
+      + '<h1>City Portal Login</h1>'
+      + '<p>Sign in to download data &amp; integrate with your dashboards.</p>'
+      + '<div id="err" class="err" style="display:none"></div>'
+      + '<label>Email</label><input id="email" type="email" autocomplete="username" />'
+      + '<label>Password</label><input id="password" type="password" autocomplete="current-password" />'
+      + '<button class="primary" id="signin">Sign in</button>'
+      + '</div></div>';
+    document.getElementById("signin").onclick = function () {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+      const emp = STORAGE.checkPassword(email, password);
+      if (!emp) {
+        const e = document.getElementById("err");
+        e.textContent = "Invalid email or password.";
+        e.style.display = "block";
+        return;
+      }
+      sessionStorage.setItem("fixthis_session", JSON.stringify(emp));
+      renderApp(emp);
+    };
+    document.getElementById("password").addEventListener("keydown", function (ev) {
+      if (ev.key === "Enter") document.getElementById("signin").click();
+    });
+  }
+
+  // ---------- Main app ----------
+  function renderApp(emp) {
+    $who.innerHTML = '<strong>' + escapeHtml(emp.name || emp.email) + '</strong>'
+      + '<span>' + escapeHtml(emp.role || emp.scope) + ' &middot; '
+      + '<a href="#" id="signout">Sign out</a></span>';
+
+    $root.innerHTML = ''
+      + '<div class="wrap">'
+      + '  <h2 class="section">Filter</h2>'
+      + '  <div class="filters">'
+      + '    <div><label>Status</label><select id="f_status"><option value="">All</option>'
+      +        '<option value="open">Open</option><option value="in_progress">In progress</option>'
+      +        '<option value="resolved">Resolved</option><option value="closed">Closed</option></select></div>'
+      + '    <div><label>Department</label><select id="f_dro"><option value="">All</option></select></div>'
+      + '    <div><label>Severity</label><select id="f_sev"><option value="">All</option>'
+      +        '<option value="low">Low</option><option value="medium">Medium</option>'
+      +        '<option value="high">High</option><option value="emergency">Emergency</option></select></div>'
+      + '    <div><label>Since</label><input type="date" id="f_since" /></div>'
+      + '    <div><label>Until</label><input type="date" id="f_until" /></div>'
+      + '    <div><label>Search</label><input type="text" id="f_q" placeholder="keyword in description" /></div>'
+      + '  </div>'
+
+      + '  <div class="summary" id="summary"></div>'
+
+      + '  <h2 class="section">Download</h2>'
+      + '  <div class="grid">'
+      + '    <div class="card"><h3>CSV</h3>'
+      +        '<p class="desc">Flat tabular export. Excel, Power BI, Tableau, Looker Studio, Google Sheets.</p>'
+      +        '<div class="meta">RFC 4180 &middot; UTF-8 &middot; flat schema</div>'
+      +        '<div class="row"><button class="btn" data-fmt="csv">Download CSV</button>'
+      +        '<button class="btn alt" data-preview="csv">Preview</button></div></div>'
+
+      + '    <div class="card"><h3>JSON</h3>'
+      +        '<p class="desc">Canonical Fix This payload with full schema. Use for ETL, custom dashboards, archives.</p>'
+      +        '<div class="meta">schema_version 1 &middot; ISO 8601 timestamps</div>'
+      +        '<div class="row"><button class="btn" data-fmt="json">Download JSON</button>'
+      +        '<button class="btn alt" data-preview="json">Preview</button></div></div>'
+
+      + '    <div class="card"><h3>GeoJSON</h3>'
+      +        '<p class="desc">FeatureCollection of point geometries. Mapbox, Leaflet, ArcGIS, QGIS, Kepler.gl.</p>'
+      +        '<div class="meta">RFC 7946 &middot; WGS84 &middot; one feature per geolocated report</div>'
+      +        '<div class="row"><button class="btn" data-fmt="geojson">Download GeoJSON</button>'
+      +        '<button class="btn alt" data-preview="geojson">Preview</button></div></div>'
+
+      + '    <div class="card"><h3>Open311 GeoReport v2</h3>'
+      +        '<p class="desc">Civic-tech standard. SeeClickFix, CitySDK, and any 311-aware dashboard.</p>'
+      +        '<div class="meta">requests.json &middot; services.json &middot; wiki.open311.org</div>'
+      +        '<div class="row"><button class="btn" data-fmt="open311">Download requests.json</button>'
+      +        '<button class="btn alt" data-fmt="services311">services.json</button></div></div>'
+
+      + '    <div class="card"><h3>Stats summary</h3>'
+      +        '<p class="desc">Pre-aggregated counts by status, DRO, severity, day. For lightweight dashboards.</p>'
+      +        '<div class="meta">JSON &middot; mean resolution time included</div>'
+      +        '<div class="row"><button class="btn" data-fmt="stats">Download stats.json</button>'
+      +        '<button class="btn alt" data-preview="stats">Preview</button></div></div>'
+      + '  </div>'
+
+      + '  <div class="preview-tabs" id="ptabs" style="display:none">'
+      +    '<span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:700;align-self:center;margin-right:6px">Preview</span>'
+      +    '<button data-pt="csv">CSV</button>'
+      +    '<button data-pt="json">JSON</button>'
+      +    '<button data-pt="geojson">GeoJSON</button>'
+      +    '<button data-pt="stats">Stats</button>'
+      +    '<button data-pt="" id="ptab_close">&times; close</button>'
+      +  '</div>'
+      + '  <pre class="preview" id="preview" style="display:none"></pre>'
+
+      + '  <div class="integrations">'
+      + '    <h3>Connect a dashboard</h3>'
+      + '    <p>Each format above is the bridge into a different tool. Quick recipes:</p>'
+      + '    <ul>'
+      + '      <li><strong>Excel / Google Sheets</strong> &mdash; download CSV, open. Re-download to refresh.</li>'
+      + '      <li><strong>Power BI / Tableau</strong> &mdash; <code>Get Data &rarr; Web</code> on the JSON download URL, or import the CSV.</li>'
+      + '      <li><strong>Looker Studio</strong> &mdash; CSV via <code>File upload</code> connector, refreshed on cadence.</li>'
+      + '      <li><strong>Mapbox / Leaflet / Kepler.gl</strong> &mdash; load the GeoJSON as a source layer.</li>'
+      + '      <li><strong>Grafana / Metabase</strong> &mdash; point at the JSON endpoint, or sync the CSV into a SQL store first.</li>'
+      + '      <li><strong>Open311 ecosystem</strong> &mdash; <code>requests.json</code> + <code>services.json</code> follow the GeoReport v2 spec.</li>'
+      + '    </ul>'
+      + '    <p style="margin-top:10px"><a href="docs/API.md">Full API docs</a> &middot; <a href="docs/SCHEMA.md">Schema reference</a> &middot; <a href="docs/INTEGRATIONS.md">Integration guide</a> &middot; <a href="docs/openapi.yaml">OpenAPI 3.0 spec</a></p>'
+      + '  </div>'
+
+      + '</div>';
+
+    document.getElementById("signout").onclick = function (ev) {
+      ev.preventDefault();
+      sessionStorage.removeItem("fixthis_session");
+      location.reload();
+    };
+
+    // Populate DRO filter from routing
+    const droSel = document.getElementById("f_dro");
+    if (window.ROUTING) {
+      ROUTING.list().forEach(function (d) {
+        const opt = document.createElement("option");
+        opt.value = d.key; opt.textContent = d.icon + " " + d.label;
+        droSel.appendChild(opt);
+      });
+    }
+
+    // Live cache → re-render summary on every change
+    let allReports = [];
+    STORAGE.onChange(function (rs) {
+      allReports = rs;
+      refreshSummary();
+    });
+
+    // Filter wiring
+    ["f_status","f_dro","f_sev","f_since","f_until","f_q"].forEach(function (id) {
+      document.getElementById(id).addEventListener("input", refreshSummary);
+    });
+
+    function currentFilter() {
+      const f = {};
+      const s = document.getElementById("f_status").value;  if (s) f.status = s;
+      const d = document.getElementById("f_dro").value;     if (d) f.dro = d;
+      const v = document.getElementById("f_sev").value;     if (v) f.severity = v;
+      const since = document.getElementById("f_since").value; if (since) f.since = since;
+      const until = document.getElementById("f_until").value; if (until) f.until = until + "T23:59:59.999Z";
+      const q = document.getElementById("f_q").value.trim();  if (q) f.q = q;
+      // Scope-restricted users only see their DRO
+      if (emp.scope && emp.scope !== "ALL" && !f.dro) f.dro = emp.scope;
+      return f;
+    }
+
+    function filtered() { return STORAGE.query(currentFilter()); }
+
+    function refreshSummary() {
+      const rs = filtered();
+      const s = EXPORT.toStats(rs);
+      const $s = document.getElementById("summary");
+      $s.innerHTML = ''
+        + '<div class="stat"><strong>' + s.total + '</strong>matching</div>'
+        + '<div class="stat"><strong>' + (s.by_status.open || 0) + '</strong>open</div>'
+        + '<div class="stat"><strong>' + (s.by_status.in_progress || 0) + '</strong>in&nbsp;progress</div>'
+        + '<div class="stat"><strong>' + (s.by_status.resolved || 0) + '</strong>resolved</div>';
+    }
+
+    // Download buttons
+    document.querySelectorAll("[data-fmt]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        const rs = filtered();
+        const fmt = b.getAttribute("data-fmt");
+        const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+        switch (fmt) {
+          case "csv":
+            EXPORT.download("fixthis-reports-" + stamp + ".csv", EXPORT.toCsv(rs), "text/csv;charset=utf-8");
+            break;
+          case "json":
+            EXPORT.download("fixthis-reports-" + stamp + ".json", EXPORT.toJson(rs, { pretty: true }), "application/json");
+            break;
+          case "geojson":
+            EXPORT.download("fixthis-reports-" + stamp + ".geojson", EXPORT.toGeoJson(rs), "application/geo+json");
+            break;
+          case "open311":
+            EXPORT.download("requests-" + stamp + ".json", EXPORT.toOpen311(rs), "application/json");
+            break;
+          case "services311":
+            EXPORT.download("services-" + stamp + ".json", EXPORT.toOpen311Services(), "application/json");
+            break;
+          case "stats":
+            EXPORT.download("fixthis-stats-" + stamp + ".json", JSON.stringify(EXPORT.toStats(rs), null, 2), "application/json");
+            break;
+        }
+      });
+    });
+
+    // Preview buttons
+    document.querySelectorAll("[data-preview]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        showPreview(b.getAttribute("data-preview"));
+      });
+    });
+    document.querySelectorAll("#ptabs button[data-pt]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        const pt = b.getAttribute("data-pt");
+        if (!pt) {
+          document.getElementById("ptabs").style.display = "none";
+          document.getElementById("preview").style.display = "none";
+          return;
+        }
+        showPreview(pt);
+      });
+    });
+
+    function showPreview(kind) {
+      const rs = filtered().slice(0, 5); // cap preview
+      let txt = "";
+      if (kind === "csv")     txt = EXPORT.toCsv(rs);
+      else if (kind === "json")    txt = EXPORT.toJson(rs, { pretty: true });
+      else if (kind === "geojson") txt = pretty(EXPORT.toGeoJson(rs));
+      else if (kind === "stats")   txt = JSON.stringify(EXPORT.toStats(filtered()), null, 2);
+      const $p = document.getElementById("preview");
+      const $t = document.getElementById("ptabs");
+      $p.textContent = (rs.length === 5 ? "// preview limited to first 5 rows\n\n" : "") + txt;
+      $p.style.display = "block";
+      $t.style.display = "flex";
+      $t.querySelectorAll("button").forEach(function (b) {
+        if (b.id === "ptab_close") return;
+        b.classList.toggle("active", b.getAttribute("data-pt") === kind);
+      });
+    }
+
+    function pretty(jsonStr) {
+      try { return JSON.stringify(JSON.parse(jsonStr), null, 2); }
+      catch (e) { return jsonStr; }
+    }
+
+    refreshSummary();
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
+      return { "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;" }[c];
+    });
+  }
+})();
+</script>
+</body>
+</html>

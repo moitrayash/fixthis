@@ -135,7 +135,7 @@
   .pill{display:inline-block;background:var(--paper-2);color:var(--muted);padding:6px 10px;border-radius:99px;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
   .hide{display:none !important}
 
-  @media (min-width:720px){body{padding:calc(var(--safe-t) + 24px) calc(var(--safe-r) + 32px) calc(var(--safe-b) + 16px) calc(var(--safe-l) + 32px)}.landing{padding:10vh 0}}
+  @media (min-width:720px){body{padding:calc(var(--safe-t) + 24px) calc(var(--safe-r) + 32px) calc(var(--safe-b) + 24px) calc(var(--safe-l) + 32px)}.landing{padding:10vh 0}}
 </style>
 </head>
 <body>
@@ -146,7 +146,6 @@
       <path d="M32 4 L56 14 L56 32 C56 46 45 56 32 60 C19 56 8 46 8 32 L8 14 Z" fill="#b91c1c" stroke="#7f1d1d" stroke-width="2"/>
       <path d="M32 14 L46 19 L46 32 C46 41 39 48 32 50 C25 48 18 41 18 32 L18 19 Z" fill="#fff"/>
       <path d="M22 28 H42 M22 34 H42 M22 40 H38" stroke="#b91c1c" stroke-width="2.5" stroke-linecap="round"/>
-    </path>
     </svg>
     <div>Fix This<small>Ithaca · Cornell</small></div>
   </a>
@@ -164,17 +163,17 @@
   <span><a href="pulse.html">The Wall of Fixes</a> · <a href="admin.html">City Portal</a> · <a href="#" onclick="showCite();return false">Cite</a></span>
 </footer>
 
-<div class="cite-modal" id="citeModal" onclick="if(event.target===this)closeCite()">
+<div id="citeModal" class="cite-modal" onclick="if(event.target===this)closeCite()">
   <div class="cite-card">
     <button class="close" onclick="closeCite()" aria-label="Close">×</button>
     <h3>Cite this</h3>
     <p class="meta">Yash Moitra · "Fix This Research Preview ·" · 2026</p>
     <div class="fmt"><h4>APA</h4><pre>Moitra, Y. (2026). Fix This Research Preview ·. https://fixthis.yashmoitra.com/</pre></div>
     <div class="fmt"><h4>MLA</h4><pre>Moitra, Yash. "Fix This Research Preview ·." 2026, fixthis.yashmoitra.com.</pre></div>
-    <div class="fmt"><h4>Chicago</h4><pre>Moitra, Yash. 2026. "Fix This Research Preview ·." https://fixthis.yashmoitra.com/</pre></div>
+    <div class="fmt"><h4>Chicago</h4><pre>Moitra, Yash. 2026. "Fix This Research Preview ·." https://fixthis.yashmoitra.com/.</pre></div>
     <div class="fmt"><h4>Harvard</h4><pre>Moitra, Y. (2026) Fix This Research Preview ·. Available at: https://fixthis.yashmoitra.com/.</pre></div>
     <div class="fmt"><h4>IEEE</h4><pre>Y. Moitra, "Fix This Research Preview ·," 2026. [Online]. Available: https://fixthis.yashmoitra.com/</pre></div>
-    <div class="fmt"><h4>BibTex</h4><pre>@misc{moitra2026fixthis,
+    <div class="fmt"><h4>BibTeX</h4><pre>@misc{moitra2026fixthis,
   author = {Yash Moitra},
   title  = {Fix This Research Preview {\textperiodcentered}},
   year   = {2026},
@@ -190,6 +189,7 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape')closeCite()}
 
 <script src="assets/routing.js"></script>
 <script src="assets/classifier.js"></script>
+<script src="assets/schema.js"></script>
 <script src="assets/storage.js"></script>
 <script src="assets/app.js"></script>
 </body>

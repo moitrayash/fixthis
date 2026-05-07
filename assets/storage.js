@@ -1,11 +1,42 @@
-/* Fix This — storage adapter (Firestore edition).
-   - Reports synced across devices via Cloud Firestore (collection: 'reports')
-   - Real-time listener: admin kanban auto-updates when new tickets arrive
-   - Photos compressed to ~100KB before upload to fit Firestore's 1MB doc limit
-   - Employee directory stays local (no cloud auth needed for demo)
-   - Same synchronous API surface as before so app.js / admin.js need no changes
+/* Fix This — storage layer (v2).
+   ----------------------------------------------------------------
+   Schema-validated, adapter-based persistence. Public surface kept
+   backward-compatible with v1 (app.js / admin.js need no changes),
+   plus new query/aggregate/export hooks for the export.js module
+   and third-party integrations.
+
+   Architecture:
+       app.js / admin.js / export.js
+                      │
+                      ▼
+                 STORAGE  (this file, public API)
+                      │
+                      ▼
+                 Adapter  (Firestore | Local)
+                      │
+                      ▼
+                 Backend  (Firestore | localStorage)
+
+   The schema (assets/schema.js) is the contract between the adapters
+   and consumers. All reads pass through SCHEMA.normalize(); all writes
+   pass through SCHEMA.validate() before hitting the wire.
+
+   Backward compatibility:
+   On the way OUT to consumers we attach legacy camelCase aliases
+   (createdAt, takenAt, photoMeta, ...) alongside the canonical
+   snake_case fields. New code should read snake_case; old code keeps
+   working unchanged.
 */
 (function () {
+  "use strict";
+
+  if (!window.SCHEMA) {
+    console.error("storage.js: SCHEMA is missing — load assets/schema.js first");
+    return;
+  }
+  const S = window.SCHEMA;
+
+  // ---------- Firebase config (public client SDK keys; safe to commit) ----------
   const firebaseConfig = {
     apiKey: "AIzaSyDeaFx4p2XtM191GOj-Ehlr2hCz2A9Ua_o",
     authDomain: "fixthis-17c64.firebaseapp.com",
@@ -14,7 +45,10 @@
     messagingSenderId: "325058467941",
     appId: "1:325058467941:web:43596c243ab37a0fb34e8c"
   };
+  const SDK_BASE = "https://www.gstatic.com/firebasejs/10.13.2/";
+  const COLL = "reports";
 
+  // ---------- DOM helpers ----------
   function loadScript(src) {
     return new Promise(function (resolve, reject) {
       const s = document.createElement("script");
@@ -24,34 +58,7 @@
     });
   }
 
-  const SDK_BASE = "https://www.gstatic.com/firebasejs/10.13.2/";
-  let dbReady = (async function () {
-    await loadScript(SDK_BASE + "firebase-app-compat.js");
-    await loadScript(SDK_BASE + "firebase-firestore-compat.js");
-    firebase.initializeApp(firebaseConfig);
-    return firebase.firestore();
-  })();
-
-  const COLL = "reports";
-  let cache = [];
-  let listeners = [];
-
-  function notify() { listeners.forEach(function (fn) { try { fn(cache); } catch (e) {} }); }
-  function onChange(fn) { listeners.push(fn); fn(cache); return function () { listeners = listeners.filter(function (x) { return x !== fn; }); }; }
-
-  dbReady.then(function (db) {
-    db.collection(COLL).orderBy("createdAt", "desc").onSnapshot(function (snap) {
-      cache = snap.docs.map(function (d) { return d.data(); });
-      notify();
-    }, function (err) { console.error("Firestore subscription error", err); });
-  }).catch(function (e) {
-    console.error("Firebase init failed; falling back to localStorage", e);
-    try {
-      cache = JSON.parse(localStorage.getItem("fixthis_reports_v3") || "[]");
-      notify();
-    } catch (e2) {}
-  });
-
+  // ---------- Photo compression (Firestore 1MB doc limit) ----------
   function compressDataUrl(dataUrl, maxWidth, quality) {
     return new Promise(function (resolve) {
       if (!dataUrl) return resolve(null);
@@ -60,10 +67,10 @@
         const ratio = Math.min(1, (maxWidth || 800) / img.width);
         const w = Math.round(img.width * ratio);
         const h = Math.round(img.height * ratio);
-        const canvas = document.createElement("canvas");
-        canvas.width = w; canvas.height = h;
-        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-        try { resolve(canvas.toDataURL("image/jpeg", quality || 0.72)); }
+        const c = document.createElement("canvas");
+        c.width = w; c.height = h;
+        c.getContext("2d").drawImage(img, 0, 0, w, h);
+        try { resolve(c.toDataURL("image/jpeg", quality || 0.72)); }
         catch (e) { resolve(dataUrl); }
       };
       img.onerror = function () { resolve(dataUrl); };
@@ -71,47 +78,224 @@
     });
   }
 
+  // ---------- Legacy alias decorator ----------
+  // New canonical fields are snake_case. Old consumers read camelCase.
+  // Decorate every read with both names so nothing breaks.
+  const ALIAS_PAIRS = [
+    ["created_at",     "createdAt"],
+    ["updated_at",     "updatedAt"],
+    ["resolved_at",    "resolvedAt"],
+    ["photo_taken_at", "takenAt"],
+    ["photo_taken_at", "photoTakenAt"],
+    ["photo_meta",     "photoMeta"]
+  ];
+  function decorate(r) {
+    if (!r) return r;
+    for (let i = 0; i < ALIAS_PAIRS.length; i++) {
+      const [canon, legacy] = ALIAS_PAIRS[i];
+      if (r[canon] !== undefined && r[legacy] === undefined) r[legacy] = r[canon];
+    }
+    return r;
+  }
+
+  // ---------- Adapter interface ----------
+  // Every adapter implements: ready(), subscribe(onChange), put(report), patch(id, partial).
+  // Reads come from a local cache that the adapter is responsible for keeping fresh.
+
+  function FirestoreAdapter() {
+    let dbReady = (async function () {
+      await loadScript(SDK_BASE + "firebase-app-compat.js");
+      await loadScript(SDK_BASE + "firebase-firestore-compat.js");
+      firebase.initializeApp(firebaseConfig);
+      return firebase.firestore();
+    })();
+    return {
+      name: "firestore",
+      ready: function () { return dbReady; },
+      subscribe: function (onSnap) {
+        return dbReady.then(function (db) {
+          return db.collection(COLL).orderBy("created_at", "desc").onSnapshot(function (snap) {
+            onSnap(snap.docs.map(function (d) { return d.data(); }));
+          }, function (err) {
+            // Fallback to legacy createdAt ordering if old docs lack created_at
+            console.warn("Firestore order(created_at) failed, falling back", err && err.code);
+            db.collection(COLL).onSnapshot(function (snap) {
+              const docs = snap.docs.map(function (d) { return d.data(); });
+              docs.sort(function (a, b) {
+                const ta = +new Date(a.created_at || a.createdAt || 0);
+                const tb = +new Date(b.created_at || b.createdAt || 0);
+                return tb - ta;
+              });
+              onSnap(docs);
+            });
+          });
+        });
+      },
+      put: async function (report) {
+        const db = await dbReady;
+        await db.collection(COLL).doc(report.id).set(report);
+      },
+      patch: async function (id, partial) {
+        const db = await dbReady;
+        await db.collection(COLL).doc(id).set(partial, { merge: true });
+      }
+    };
+  }
+
+  function LocalAdapter() {
+    const KEY = "fixthis_reports_v3";
+    let cache = [];
+    try { cache = JSON.parse(localStorage.getItem(KEY) || "[]"); } catch (e) {}
+    let cb = null;
+    function persist() { try { localStorage.setItem(KEY, JSON.stringify(cache)); } catch (e) {} }
+    return {
+      name: "local",
+      ready: function () { return Promise.resolve(); },
+      subscribe: function (onSnap) { cb = onSnap; onSnap(cache.slice()); return function () { cb = null; }; },
+      put: async function (report) {
+        const i = cache.findIndex(function (r) { return r.id === report.id; });
+        if (i === -1) cache.unshift(report); else cache[i] = report;
+        persist(); if (cb) cb(cache.slice());
+      },
+      patch: async function (id, partial) {
+        const i = cache.findIndex(function (r) { return r.id === id; });
+        if (i === -1) return;
+        cache[i] = Object.assign({}, cache[i], partial);
+        persist(); if (cb) cb(cache.slice());
+      }
+    };
+  }
+
+  // ---------- Pick adapter ----------
+  let adapter;
+  try { adapter = FirestoreAdapter(); }
+  catch (e) { console.warn("Firestore unavailable, using local adapter", e); adapter = LocalAdapter(); }
+
+  // ---------- Cache + listeners ----------
+  let cache = [];                  // canonical Reports, decorated with legacy aliases
+  let listeners = [];
+  function notify() { listeners.forEach(function (fn) { try { fn(cache); } catch (e) {} }); }
+  function onChange(fn) { listeners.push(fn); fn(cache); return function () { listeners = listeners.filter(function (x) { return x !== fn; }); }; }
+
+  adapter.subscribe(function (rawDocs) {
+    cache = rawDocs.map(function (d) { return decorate(S.normalize(d)); });
+    notify();
+  });
+
+  // Final fallback: if Firestore never comes up, hydrate from localStorage
+  setTimeout(function () {
+    if (cache.length === 0 && adapter.name === "firestore") {
+      try {
+        const raw = JSON.parse(localStorage.getItem("fixthis_reports_v3") || "[]");
+        if (raw.length) {
+          cache = raw.map(function (d) { return decorate(S.normalize(d)); });
+          notify();
+        }
+      } catch (e) {}
+    }
+  }, 4000);
+
+  // ---------- Public read API ----------
   function list(filter) {
     if (!filter) return cache.slice();
-    return cache.filter(function (r) {
-      if (filter.dro && r.dro !== filter.dro) return false;
-      if (filter.status && r.status !== filter.status) return false;
-      return true;
-    });
+    return cache.filter(function (r) { return matches(r, filter); });
   }
   function get(id) { return cache.find(function (r) { return r.id === id; }); }
 
-  function save(report) {
-    cache = [report].concat(cache);
+  // Richer query: { status, dro, severity, since, until, owner_scope, q (full-text on description) }
+  function query(spec) {
+    spec = spec || {};
+    return cache.filter(function (r) {
+      if (!matches(r, spec)) return false;
+      if (spec.since && new Date(r.created_at) < new Date(spec.since)) return false;
+      if (spec.until && new Date(r.created_at) > new Date(spec.until)) return false;
+      if (spec.owner_scope && (!r.owner || r.owner.scope !== spec.owner_scope)) return false;
+      if (spec.q) {
+        const q = String(spec.q).toLowerCase();
+        const hay = ((r.description || "") + " " + (r.title || "")).toLowerCase();
+        if (hay.indexOf(q) === -1) return false;
+      }
+      return true;
+    });
+  }
+  function matches(r, f) {
+    if (f.dro && r.dro !== f.dro) return false;
+    if (f.status && r.status !== f.status) return false;
+    if (f.severity && r.severity !== f.severity) return false;
+    return true;
+  }
+
+  // Aggregations for dashboards
+  function countBy(field) {
+    const out = {};
+    for (let i = 0; i < cache.length; i++) {
+      const k = cache[i][field] == null ? "(none)" : String(cache[i][field]);
+      out[k] = (out[k] || 0) + 1;
+    }
+    return out;
+  }
+  function stats() {
+    return {
+      total: cache.length,
+      by_status: countBy("status"),
+      by_dro: countBy("dro"),
+      by_severity: countBy("severity"),
+      generated_at: new Date().toISOString()
+    };
+  }
+
+  // ---------- Public write API ----------
+  function save(input) {
+    const report = S.normalize(input);
+    const v = S.validate(report);
+    if (!v.valid) {
+      console.error("STORAGE.save validation failed", v.errors, report);
+      throw new Error("Invalid report: " + v.errors.join("; "));
+    }
+    // Optimistic local insert
+    const decorated = decorate(Object.assign({}, report));
+    cache = [decorated].concat(cache.filter(function (x) { return x.id !== report.id; }));
     notify();
-    dbReady.then(async function (db) {
-      let toSave = Object.assign({}, report);
-      if (toSave.photo) {
+
+    // Compress photo, then write
+    (async function () {
+      const toSave = Object.assign({}, report);
+      if (toSave.photo && /^data:/.test(toSave.photo)) {
         const compressed = await compressDataUrl(toSave.photo, 900, 0.72);
         toSave.photo = compressed;
-        if (toSave.photoMeta) toSave.photoMeta.compressedSize = (compressed || "").length;
+        if (toSave.photo_meta) toSave.photo_meta.compressedSize = (compressed || "").length;
       }
-      try { await db.collection(COLL).doc(report.id).set(toSave); }
-      catch (e) {
-        console.error("Firestore save failed", e);
+      try {
+        await adapter.put(toSave);
+      } catch (e) {
+        console.error("STORAGE.save adapter error", e);
+        // Local backup so we don't lose the report
         try {
           const arr = JSON.parse(localStorage.getItem("fixthis_reports_v3") || "[]");
-          arr.unshift(report);
+          arr.unshift(toSave);
           localStorage.setItem("fixthis_reports_v3", JSON.stringify(arr));
         } catch (e2) {}
       }
-    });
-    return report;
+    })();
+    return decorated;
   }
 
   function update(id, patch) {
     const i = cache.findIndex(function (r) { return r.id === id; });
     if (i === -1) return null;
-    cache[i] = Object.assign({}, cache[i], patch, { updatedAt: Date.now() });
+    const next = Object.assign({}, cache[i], patch, { updated_at: new Date().toISOString() });
+    if (patch.status === S.Status.RESOLVED && !next.resolved_at) {
+      next.resolved_at = next.updated_at;
+    }
+    cache[i] = decorate(S.normalize(next));
     notify();
-    dbReady.then(function (db) {
-      db.collection(COLL).doc(id).set(Object.assign({}, patch, { updatedAt: Date.now() }), { merge: true })
-        .catch(function (e) { console.error("Firestore update failed", e); });
+
+    const wirePatch = Object.assign({}, patch, {
+      updated_at: cache[i].updated_at,
+      resolved_at: cache[i].resolved_at || null
+    });
+    adapter.patch(id, wirePatch).catch(function (e) {
+      console.error("STORAGE.update adapter error", e);
     });
     return cache[i];
   }
@@ -124,19 +308,20 @@
     return "FIX-" + datePart + "-" + rand;
   }
 
+  // ---------- Employees (local directory) ----------
   const EMP_KEY = "fixthis_employees_v1";
   const DEFAULT_EMPLOYEES = [
-    { email: "admin@fixthis.local", password: "city2024", scope: "ALL", name: "Master Admin", role: "Citywide Coordinator" },
-    { email: "roads@cityofithaca.org", password: "roads2024", scope: "ROADS", name: "Ithaca DPW \u00b7 Roads", role: "Streets Supervisor" },
-    { email: "water@cityofithaca.org", password: "water2024", scope: "WATER", name: "Ithaca Water & Sewer", role: "Operations Lead" },
-    { email: "dpw@cityofithaca.org", password: "waste2024", scope: "WASTE", name: "Ithaca Sanitation", role: "Operations Lead" },
-    { email: "parks@cityofithaca.org", password: "parks2024", scope: "PARKS", name: "Ithaca Parks", role: "Forestry & Parks" },
-    { email: "tcat@tcatmail.com", password: "transit2024", scope: "TRANSIT", name: "TCAT Operations", role: "Customer Service" },
-    { email: "fcs-help@cornell.edu", password: "lights2024", scope: "LIGHTING", name: "Cornell FCS \u00b7 Lighting", role: "Facilities" },
-    { email: "scl-facilities@cornell.edu", password: "build2024", scope: "BUILDINGS", name: "Cornell Housing Maintenance", role: "Facilities Manager" },
-    { email: "itservicedesk@cornell.edu", password: "it2024", scope: "IT", name: "Cornell IT Service Desk", role: "Triage" },
-    { email: "info@spcaonline.com", password: "spca2024", scope: "ANIMAL", name: "SPCA Tompkins", role: "Animal Control" },
-    { email: "askehs@cornell.edu", password: "ehs2024", scope: "SAFETY", name: "Cornell EHS", role: "Health & Safety" }
+    { email: "admin@fixthis.local",        password: "city2024",    scope: "ALL",       name: "Master Admin",                 role: "Citywide Coordinator" },
+    { email: "roads@cityofithaca.org",     password: "roads2024",   scope: "ROADS",     name: "Ithaca DPW · Roads",           role: "Streets Supervisor" },
+    { email: "water@cityofithaca.org",     password: "water2024",   scope: "WATER",     name: "Ithaca Water & Sewer",         role: "Operations Lead" },
+    { email: "dpw@cityofithaca.org",       password: "waste2024",   scope: "WASTE",     name: "Ithaca Sanitation",            role: "Operations Lead" },
+    { email: "parks@cityofithaca.org",     password: "parks2024",   scope: "PARKS",     name: "Ithaca Parks",                 role: "Forestry & Parks" },
+    { email: "tcat@tcatmail.com",          password: "transit2024", scope: "TRANSIT",   name: "TCAT Operations",              role: "Customer Service" },
+    { email: "fcs-help@cornell.edu",       password: "lights2024",  scope: "LIGHTING",  name: "Cornell FCS · Lighting",       role: "Facilities" },
+    { email: "scl-facilities@cornell.edu", password: "build2024",   scope: "BUILDINGS", name: "Cornell Housing Maintenance",  role: "Facilities Manager" },
+    { email: "itservicedesk@cornell.edu",  password: "it2024",      scope: "IT",        name: "Cornell IT Service Desk",      role: "Triage" },
+    { email: "info@spcaonline.com",        password: "spca2024",    scope: "ANIMAL",    name: "SPCA Tompkins",                role: "Animal Control" },
+    { email: "askehs@cornell.edu",         password: "ehs2024",     scope: "SAFETY",    name: "Cornell EHS",                  role: "Health & Safety" }
   ];
   function _readEmployees() {
     try {
@@ -166,16 +351,28 @@
       screen: screen.width + "x" + screen.height + "@" + (window.devicePixelRatio || 1),
       viewport: innerWidth + "x" + innerHeight,
       online: navigator.onLine,
-      referrer: document.referrer || "",
-      ipPlaceholder: "(set by server)"
+      referrer: document.referrer || ""
     };
   }
 
+  // ---------- Public surface ----------
   window.STORAGE = {
-    list: list, get: get, save: save, update: update, generateId: generateId,
-    findEmployee: findEmployee, checkPassword: checkPassword,
+    // v1 surface (kept compatible)
+    list: list,
+    get: get,
+    save: save,
+    update: update,
+    generateId: generateId,
+    findEmployee: findEmployee,
+    checkPassword: checkPassword,
     captureMetadata: captureMetadata,
     onChange: onChange,
-    backend: "firestore"
+    backend: adapter.name,
+
+    // v2 additions
+    schema: S,
+    query: query,
+    stats: stats,
+    countBy: countBy
   };
 })();
