@@ -16,12 +16,12 @@ window.ROUTING = (function () {
       label: "Life-threatening emergency",
       // We never auto-dial. We prompt the user and provide the number.
       number: "911",
-      note: "Police · Fire · EMS"
+      note: "Police, Fire, EMS"
     },
     CORNELL_POLICE: {
       label: "Cornell University Police",
       number: "607-255-1111",
-      note: "Non-emergency campus dispatch · 24/7"
+      note: "Non-emergency campus dispatch, 24/7"
     },
     ITHACA_POLICE_NONEMERG: {
       label: "Ithaca Police (non-emergency)",
@@ -62,7 +62,7 @@ window.ROUTING = (function () {
       color: "#0369a1",
       examples: "burst pipes, leaks, hydrant problems, no water, flooding",
       owners: [
-        { scope: "Ithaca Water & Sewer", email: "wsewer@cityofithaca.org", phone: "607-272-1717", hours: "Mon–Fri 7a–3:30p · after-hours via dispatch" },
+        { scope: "Ithaca Water & Sewer", email: "wsewer@cityofithaca.org", phone: "607-272-1717", hours: "Mon–Fri 7a–3:30p, after-hours via dispatch" },
         { scope: "Cornell housing plumbing", email: "scl-facilities@cornell.edu", phone: "607-255-0328", hours: "Mon–Fri 8a–4p" }
       ]
     },
@@ -118,7 +118,7 @@ window.ROUTING = (function () {
       color: "#b91c1c",
       examples: "broken bedframe, leaking roof, busted door, broken window, HVAC, mold",
       owners: [
-        { scope: "Cornell Housing Maintenance", email: "scl-facilities@cornell.edu", phone: "607-255-0328", hours: "Mon–Fri 8a–4p · after-hours via EMCS" },
+        { scope: "Cornell Housing Maintenance", email: "scl-facilities@cornell.edu", phone: "607-255-0328", hours: "Mon–Fri 8a–4p, after-hours via EMCS" },
         { scope: "Cornell after-hours (EMCS)", email: "fcs-help@cornell.edu", phone: "607-255-5322", hours: "24/7" },
         { scope: "Ithaca Building Dept", email: "building@cityofithaca.org", phone: "607-274-6508" }
       ]
@@ -151,7 +151,7 @@ window.ROUTING = (function () {
       color: "#991b1b",
       examples: "chemical spill, asbestos, unsafe condition, hazmat",
       owners: [
-        { scope: "Cornell EHS", email: "askehs@cornell.edu", phone: "607-255-8200", hours: "Mon–Fri 8a–4:30p · 911 for emergency" }
+        { scope: "Cornell EHS", email: "askehs@cornell.edu", phone: "607-255-8200", hours: "Mon–Fri 8a–4:30p, 911 for emergency" }
       ]
     },
     GENERAL: {
