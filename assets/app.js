@@ -128,10 +128,10 @@
     const node = el(
       '<section class="screen landing">' +
         '<h1>Report broken stuff<br>in Ithaca.</h1>' +
-        '<p style="font-weight:600;color:var(--ink);max-width:34ch">Potholes · Streetlights · Trash · Benches · Sidewalks · Buses</p>' +
+        '<p style="font-weight:600;color:var(--ink);max-width:34ch">Potholes, Streetlights, Trash, Benches, Sidewalks, Buses</p>' +
         '<p>Snap a photo. One sentence. We send it to the city office that can actually fix it.</p>' +
         '<button class="big-red" id="startBtn">Report something</button>' +
-        '<span class="pill">Free · No login · Ithaca + Cornell pilot</span>' +
+        '<span class="pill">Free, No login, Ithaca + Cornell pilot</span>' +
         '<a href="pulse.html" class="live-strip" id="liveStrip"><span class="dot"></span><span><strong id="liveCount">—</strong> things being fixed in Ithaca</span><span class="arrow">→</span></a>' +
       '</section>'
     );
@@ -258,7 +258,7 @@
       if (!hasGeo) {
         locStatus.innerHTML = '📍 Need your location — <a href="#" id="askLoc" style="color:var(--red);font-weight:700">tap to allow</a>';
       } else {
-        locStatus.innerHTML = '✓ Location captured · ' + state.geo.source;
+        locStatus.innerHTML = '✓ Location captured, ' + state.geo.source;
         locStatus.style.color = "var(--ok)";
       }
       const askLoc = locStatus.querySelector("#askLoc");
@@ -314,8 +314,8 @@
         '<p>If someone is in danger, call <strong>' + num + '</strong> right now. We’ll keep your report on file either way.</p>' +
         '<div class="countdown" id="cd">7</div>' +
         '<a class="btn btn-call" href="tel:' + telDigits + '">Call ' + num + '</a>' +
-        '<button class="btn btn-cancel" id="notEmerg">Not an emergency · keep going</button>' +
-        '<small style="opacity:.85">' + emerg.info.label + ' · ' + emerg.info.note + '</small>' +
+        '<button class="btn btn-cancel" id="notEmerg">Not an emergency, keep going</button>' +
+        '<small style="opacity:.85">' + emerg.info.label + ', ' + emerg.info.note + '</small>' +
       '</div>'
     );
     document.body.appendChild(overlay);
@@ -436,8 +436,8 @@
         '<div class="ticket">Ticket ' + report.id + '</div>' +
         '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center">' +
           (report.emergency ? '<span class="pill" style="background:#fee2e2;color:#b91c1c">Marked urgent</span>' : '') +
-          (report.geo ? '<span class="pill">Location captured · ' + report.geo.source + '</span>' : '') +
-          (takenStr ? '<span class="pill">Photo taken · ' + takenStr + '</span>' : '') +
+          (report.geo ? '<span class="pill">Location captured, ' + report.geo.source + '</span>' : '') +
+          (takenStr ? '<span class="pill">Photo taken, ' + takenStr + '</span>' : '') +
         '</div>' +
         '<div class="success-actions">' +
           '<button class="btn btn-ghost" id="editBtn">Edit or add more</button>' +
