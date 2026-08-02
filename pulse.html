@@ -7,7 +7,7 @@
 <title>Fix This: The Pulse</title>
 <meta name="description" content="Live pulse of what's broken and what's getting fixed in Ithaca and on Cornell's campus. A citizen reports it. A department fixes it. You see it happen." />
 <meta property="og:type" content="website" />
-<meta property="og:title" content="The Pulse — what Ithaca and Cornell are fixing right now" />
+<meta property="og:title" content="Fix This: The Pulse" />
 <meta property="og:description" content="Live count of broken things, being-fixed things, and resolved things. A citizen reports it. A department fixes it. You see it happen." />
 <meta property="og:url" content="https://fixthis.yashmoitra.com/pulse.html" />
 <meta property="og:image" content="https://fixthis.yashmoitra.com/assets/icon.svg" />
@@ -146,7 +146,7 @@
 </header>
 
 <section class="hero">
-  <span class="eyebrow">Live · Ithaca pulse</span>
+  <span class="eyebrow">Live, Ithaca pulse</span>
   <h1>Things <span class="accent">get fixed</span> when somebody bothers to point at them.</h1>
   <p class="lede">This is what your neighbors are pointing at right now. Every red pin is a person who refused to walk past a problem.</p>
 </section>
@@ -199,20 +199,20 @@
 </section>
 
 <footer>
-  <div>© 2026 Fix This · An Ithaca / Cornell Pilot</div>
-  <div style="margin-top:6px"><a href="index.html">Home</a> · <a href="admin.html">City Portal</a> · <a href="#" onclick="showCite();return false">Cite</a></div>
+  <div>© 2026 Fix This, An Ithaca / Cornell Pilot</div>
+  <div style="margin-top:6px"><a href="index.html">Home</a>, <a href="admin.html">City Portal</a>, <a href="#" onclick="showCite();return false">Cite</a></div>
 </footer>
 
 <div id="citeModal" class="cite-modal" onclick="if(event.target===this)closeCite()">
   <div class="cite-card">
     <button class="close" onclick="closeCite()" aria-label="Close">×</button>
     <h3>Cite this</h3>
-    <p class="meta">Yash Moitra · "Fix This Research Preview ·" · 2026</p>
-    <div class="fmt"><h4>APA</h4><pre>Moitra, Y. (2026). Fix This Research Preview ·. https://fixthis.yashmoitra.com/</pre></div>
-    <div class="fmt"><h4>MLA</h4><pre>Moitra, Yash. "Fix This Research Preview ·." 2026, fixthis.yashmoitra.com.</pre></div>
-    <div class="fmt"><h4>Chicago</h4><pre>Moitra, Yash. 2026. "Fix This Research Preview ·." https://fixthis.yashmoitra.com/.</pre></div>
-    <div class="fmt"><h4>Harvard</h4><pre>Moitra, Y. (2026) Fix This Research Preview ·. Available at: https://fixthis.yashmoitra.com/.</pre></div>
-    <div class="fmt"><h4>IEEE</h4><pre>Y. Moitra, "Fix This Research Preview ·," 2026. [Online]. Available: https://fixthis.yashmoitra.com/</pre></div>
+    <p class="meta">Yash Moitra, "Fix This Research Preview", 2026</p>
+    <div class="fmt"><h4>APA</h4><pre>Moitra, Y. (2026). Fix This Research Preview. https://fixthis.yashmoitra.com/</pre></div>
+    <div class="fmt"><h4>MLA</h4><pre>Moitra, Yash. "Fix This Research Preview." 2026, fixthis.yashmoitra.com.</pre></div>
+    <div class="fmt"><h4>Chicago</h4><pre>Moitra, Yash. 2026. "Fix This Research Preview." https://fixthis.yashmoitra.com/.</pre></div>
+    <div class="fmt"><h4>Harvard</h4><pre>Moitra, Y. (2026) Fix This Research Preview. Available at: https://fixthis.yashmoitra.com/.</pre></div>
+    <div class="fmt"><h4>IEEE</h4><pre>Y. Moitra, "Fix This Research Preview," 2026. [Online]. Available: https://fixthis.yashmoitra.com/</pre></div>
     <div class="fmt"><h4>BibTeX</h4><pre>@misc{moitra2026fixthis,
   author = {Yash Moitra},
   title  = {Fix This Research Preview {\textperiodcentered}},
@@ -293,7 +293,7 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape')closeCite()}
       const icon = L.divIcon({ html: '<div class="marker-pin ' + cls + '"></div>', className: '', iconSize: [22,22], iconAnchor: [11,22], popupAnchor: [0,-22] });
       const m = L.marker([r.geo.lat, r.geo.lon], { icon: icon }).addTo(map);
       const dro = window.ROUTING.get(r.dro);
-      m.bindPopup('<strong style="font-size:11px;text-transform:uppercase;letter-spacing:.05em">' + escapeHtml(dro.label) + '</strong><br>' + escapeHtml(r.description.slice(0,140)) + '<br><span style="color:#6b7280;font-size:11px">' + escapeHtml(r.status || "Open") + ' · ' + fmtRel(r.createdAt) + '</span>');
+      m.bindPopup('<strong style="font-size:11px;text-transform:uppercase;letter-spacing:.05em">' + escapeHtml(dro.label) + '</strong><br>' + escapeHtml(r.description.slice(0,140)) + '<br><span style="color:#6b7280;font-size:11px">' + escapeHtml(r.status || "Open") + ', ' + fmtRel(r.createdAt) + '</span>');
       bounds.push([r.geo.lat, r.geo.lon]);
       markers.push(m);
     }
