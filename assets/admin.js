@@ -63,7 +63,7 @@
         });
         body.querySelector("#supBack").addEventListener("click", () => { stage = "email"; render(); });
       } else if (stage === "password") {
-        body = el('<div class="login"><div class="card"><h1>' + escapeHtml(pendingEmployee.name) + '</h1><p>' + escapeHtml(pendingEmployee.role) + ' · ' + escapeHtml(pendingEmployee.email) + '</p>' + (lastError ? '<div class="err">' + escapeHtml(lastError) + '</div>' : '') + '<label>Password</label><input id="pw" type="password" autofocus /><button class="primary" id="pwSubmit">Sign in</button><button id="pwBack" style="margin-top:10px;width:100%;padding:14px;background:transparent;color:var(--muted)">← different email</button></div></div>');
+        body = el('<div class="login"><div class="card"><h1>' + escapeHtml(pendingEmployee.name) + '</h1><p>' + escapeHtml(pendingEmployee.role) + ', ' + escapeHtml(pendingEmployee.email) + '</p>' + (lastError ? '<div class="err">' + escapeHtml(lastError) + '</div>' : '') + '<label>Password</label><input id="pw" type="password" autofocus /><button class="primary" id="pwSubmit">Sign in</button><button id="pwBack" style="margin-top:10px;width:100%;padding:14px;background:transparent;color:var(--muted)">← different email</button></div></div>');
         body.querySelector("#pwSubmit").addEventListener("click", tryPassword);
         body.querySelector("#pw").addEventListener("keydown", e => { if (e.key === "Enter") tryPassword(); });
         body.querySelector("#pwBack").addEventListener("click", () => { stage = "email"; pendingEmployee = null; lastError = ""; render(); });
@@ -99,7 +99,7 @@
     let mapInstance = null;
     let mapMarkers = [];
 
-    who.innerHTML = '<strong>' + escapeHtml(session.name) + '</strong>' + escapeHtml(session.role) + ' · <a href="#" id="logout">sign out</a>';
+    who.innerHTML = '<strong>' + escapeHtml(session.name) + '</strong>' + escapeHtml(session.role) + ', <a href="#" id="logout">sign out</a>';
     who.querySelector("#logout").addEventListener("click", e => { e.preventDefault(); clearSession(); window.location.reload(); });
 
     function getReports() {
@@ -140,7 +140,7 @@
     }
 
     function renderMap(filtered) {
-      return '<div class="map-pane"><div id="leafletMap"></div><div class="map-legend"><span><span class="dot open"></span>Open</span><span><span class="dot progress"></span>In Progress</span><span><span class="dot resolved"></span>Resolved</span><span style="margin-left:auto;color:var(--muted)">' + filtered.filter(r => r.geo).length + ' of ' + filtered.length + ' tickets have a location · click a pin for details</span></div></div>';
+      return '<div class="map-pane"><div id="leafletMap"></div><div class="map-legend"><span><span class="dot open"></span>Open</span><span><span class="dot progress"></span>In Progress</span><span><span class="dot resolved"></span>Resolved</span><span style="margin-left:auto;color:var(--muted)">' + filtered.filter(r => r.geo).length + ' of ' + filtered.length + ' tickets have a location, click a pin for details</span></div></div>';
     }
 
     function renderTrash(filtered) {
@@ -167,7 +167,7 @@
         const icon = L.divIcon({ html: '<div class="marker-pin ' + cls + '"></div>', className: '', iconSize: [22, 22], iconAnchor: [11, 22], popupAnchor: [0, -22] });
         const marker = L.marker([r.geo.lat, r.geo.lon], { icon: icon }).addTo(mapInstance);
         const dro = window.ROUTING.get(r.dro);
-        const popup = '<strong>' + escapeHtml(dro.label) + '</strong>' + (r.photo ? '<img src="' + r.photo + '" />' : '') + '<div style="margin:6px 0">' + escapeHtml(r.description.slice(0, 140)) + (r.description.length > 140 ? "…" : "") + '</div><div style="font-size:11px;color:#444">Status: <strong style="color:' + (cls === "open" ? "#dc2626" : cls === "progress" ? "#92400e" : "#166534") + '">' + escapeHtml(r.status || "Open") + '</strong> · ' + fmtDate(r.createdAt) + '</div><div class="pop-id">' + escapeHtml(r.id) + '</div>';
+        const popup = '<strong>' + escapeHtml(dro.label) + '</strong>' + (r.photo ? '<img src="' + r.photo + '" />' : '') + '<div style="margin:6px 0">' + escapeHtml(r.description.slice(0, 140)) + (r.description.length > 140 ? "…" : "") + '</div><div style="font-size:11px;color:#444">Status: <strong style="color:' + (cls === "open" ? "#dc2626" : cls === "progress" ? "#92400e" : "#166534") + '">' + escapeHtml(r.status || "Open") + '</strong>, ' + fmtDate(r.createdAt) + '</div><div class="pop-id">' + escapeHtml(r.id) + '</div>';
         marker.bindPopup(popup);
         bounds.push([r.geo.lat, r.geo.lon]);
         mapMarkers.push(marker);
